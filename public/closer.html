@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CLOSER - Negotiation Co-Pilot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/closer.css">
+</head>
+<body class="closer-bg">
+    <div class="closer-container">
+        <header class="closer-header">
+            <h1>CLOSER</h1>
+            <a href="/" class="btn btn-outline" style="padding: 0.5rem 1rem;">Back</a>
+        </header>
+        
+        <main class="closer-main">
+            <!-- Left panel: input & quick buttons -->
+            <div class="closer-input-panel">
+                <textarea id="buyer-input" class="closer-textarea" placeholder="What did the buyer just say? Type or paste here..."></textarea>
+                
+                <div class="action-buttons">
+                    <button id="analyze-btn" class="btn btn-primary w-full text-xl py-3">Analyze</button>
+                    <button id="emergency-btn" class="btn btn-danger w-full text-xl py-3 mt-2 font-bold">🚨 CLOSE NOW</button>
+                </div>
+                
+                <h3 class="mt-4 mb-2" style="font-size: 1rem; color: var(--text-muted);">Quick Objections</h3>
+                <div class="objections-grid" id="objections-grid">
+                    <!-- Populated by JS -->
+                </div>
+
+                <div class="mt-4">
+                    <button id="followup-btn" class="btn btn-outline w-full text-lg">Generate Follow-up Message</button>
+                </div>
+            </div>
+
+            <!-- Right panel: insights -->
+            <div class="closer-insight-panel">
+                <!-- Loading State -->
+                <div id="closer-loading" class="hidden text-center" style="margin-top: 4rem;">
+                    <div class="loader"></div>
+                    <p class="text-muted mt-2">Analyzing...</p>
+                </div>
+
+                <!-- Results -->
+                <div id="closer-results" class="hidden">
+                    <div class="insight-card highlight">
+                        <h4>Exact Words To Say</h4>
+                        <p id="res-exact" class="text-xl font-bold"></p>
+                    </div>
+                    <div class="insight-card">
+                        <h4>Psychological Insight</h4>
+                        <p id="res-psych"></p>
+                    </div>
+                    <div class="insight-card warning">
+                        <h4>Danger Signals</h4>
+                        <p id="res-danger"></p>
+                    </div>
+                    <div class="insight-card success">
+                        <h4>Tactic</h4>
+                        <p id="res-tactic"></p>
+                    </div>
+                </div>
+                
+                <!-- Followup / Emergency Result -->
+                <div id="closer-text-result" class="hidden">
+                    <div class="insight-card highlight">
+                        <h4 id="text-result-title">Result</h4>
+                        <p id="text-result-content" class="text-lg"></p>
+                    </div>
+                </div>
+                
+                <!-- Empty State -->
+                <div id="closer-empty" class="empty-state">
+                    Waiting for input...
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="/js/closer.js"></script>
+</body>
+</html>

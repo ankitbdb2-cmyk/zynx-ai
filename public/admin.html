@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PropMind - Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body class="admin-bg">
+    
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-wrapper">
+        <div class="login-card">
+            <h2 class="text-center mb-4">Admin Login</h2>
+            <form id="login-form">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-full">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="hidden dashboard-wrapper">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>PropMind</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" id="nav-leads">Leads Dashboard</a>
+                <a href="#" class="nav-item" id="nav-properties">Manage Properties</a>
+                <a href="/closer.html" class="nav-item">Go to Closer</a>
+                <a href="/" class="nav-item">Exit to Site</a>
+            </nav>
+        </aside>
+
+        <main class="dashboard-main">
+            <!-- Leads View -->
+            <div id="leads-view">
+                <header class="dashboard-header">
+                    <h2>Leads Overview</h2>
+                    <div class="header-actions">
+                        <button id="refresh-btn" class="btn btn-primary">Refresh</button>
+                        <button id="logout-btn-leads" class="btn btn-outline ml-4">Logout</button>
+                    </div>
+                </header>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Leads (7d)</h3>
+                        <div class="stat-value" id="stat-total">-</div>
+                    </div>
+                    <div class="stat-card hot-leads">
+                        <h3>Hot/Urgent Leads</h3>
+                        <div class="stat-value" id="stat-hot">-</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Conversion Rate</h3>
+                        <div class="stat-value" id="stat-conv">-%</div>
+                    </div>
+                </div>
+
+                <div class="leads-table-container">
+                    <table class="leads-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Budget / Time</th>
+                                <th>Psychology Notes</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Properties View -->
+            <div id="properties-view" class="hidden">
+                <header class="dashboard-header">
+                    <h2>Manage Properties</h2>
+                    <div class="header-actions">
+                        <button id="add-prop-btn" class="btn btn-primary">Add New Property</button>
+                        <button id="logout-btn-props" class="btn btn-outline ml-4">Logout</button>
+                    </div>
+                </header>
+
+                <div class="leads-table-container">
+                    <table class="leads-table">
+                        <thead>
+                            <tr>
+                                <th>Type</th>
+                                <th>Title</th>
+                                <th>Area</th>
+                                <th>Price</th>
+                                <th>Bedrooms</th>
+                                <th>Description</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="properties-tbody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Add Property Modal (Simple) -->
+            <div id="prop-modal" class="modal hidden">
+                <div class="modal-content">
+                    <h3>Add New Property</h3>
+                    <form id="prop-form">
+                        <div class="form-group">
+                            <label>Type</label>
+                            <select id="prop-type" class="form-control">
+                                <option value="Rent">Rent</option>
+                                <option value="Sale">Sale</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Title (e.g. Studio, 1BR)</label>
+                            <input type="text" id="prop-title" class="form-control" placeholder="Studio" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Area</label>
+                            <input type="text" id="prop-area" class="form-control" placeholder="Dubai Marina" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Price</label>
+                            <input type="text" id="prop-price" class="form-control" placeholder="AED 50,000/yr" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Bedrooms</label>
+                            <input type="text" id="prop-beds" class="form-control" placeholder="1BR or Studio" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Description</label>
+                            <input type="text" id="prop-desc" class="form-control" placeholder="Sea view, high floor">
+                        </div>
+                        <div class="modal-actions">
+                            <button type="button" id="close-modal" class="btn btn-outline">Cancel</button>
+                            <button type="submit" class="btn btn-primary">Save Property</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/admin.js"></script>
+</body>
+</html>

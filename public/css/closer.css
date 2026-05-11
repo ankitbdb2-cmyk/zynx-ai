@@ -1,0 +1,171 @@
+/* Closer App Styles */
+.closer-bg {
+    background-color: #020617;
+}
+
+.closer-container {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.closer-header {
+    background: #0f172a;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.closer-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: #38bdf8;
+    letter-spacing: 2px;
+}
+
+.closer-main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+.closer-input-panel {
+    width: 40%;
+    padding: 2rem;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+}
+
+.closer-insight-panel {
+    width: 60%;
+    padding: 2rem;
+    overflow-y: auto;
+    background: #0b1120;
+    box-sizing: border-box;
+}
+
+.closer-textarea {
+    width: 100%;
+    height: 150px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    color: white;
+    font-size: 1.1rem;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+}
+
+.closer-textarea:focus {
+    border-color: #38bdf8;
+}
+
+.w-full { width: 100%; box-sizing: border-box;}
+.py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.text-xl { font-size: 1.25rem; }
+.text-lg { font-size: 1.1rem; }
+.font-bold { font-weight: 700; }
+
+.objections-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+}
+
+.obj-btn {
+    background: #1e293b;
+    border: 1px solid #334155;
+    color: #cbd5e1;
+    padding: 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.obj-btn:hover {
+    background: #334155;
+    color: white;
+}
+
+/* Insight Cards */
+.insight-card {
+    background: #1e293b;
+    border-radius: 0.75rem;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid var(--border);
+}
+
+.insight-card h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-muted);
+}
+
+.insight-card p {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.insight-card.highlight {
+    border-left-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+}
+
+.insight-card.highlight p {
+    color: #e0f2fe;
+}
+
+.insight-card.warning {
+    border-left-color: #f59e0b;
+}
+
+.insight-card.success {
+    border-left-color: #10b981;
+}
+
+.empty-state {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+}
+
+/* Loader */
+.loader {
+    border: 4px solid rgba(255,255,255,0.1);
+    border-left-color: #38bdf8;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* Mobile Support */
+@media (max-width: 768px) {
+    .closer-main {
+        flex-direction: column;
+    }
+    .closer-input-panel, .closer-insight-panel {
+        width: 100%;
+        height: 50vh;
+    }
+}
