@@ -22,7 +22,7 @@ You must instantly give the agent a JSON response with exactly these 4 keys:
 Keep it short, punchy, and highly effective. DO NOT include any other text besides the JSON.`;
 
         const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-haiku-4-5-20251001',
             max_tokens: 300,
             temperature: 0.7,
             system: systemPrompt,
@@ -55,7 +55,7 @@ router.post('/followup', async (req, res) => {
 Return only the message text.`;
 
         const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-haiku-4-5-20251001',
             max_tokens: 400,
             temperature: 0.7,
             system: systemPrompt,
@@ -80,7 +80,7 @@ Give the single most powerful, high-conversion closing script for the exact situ
 Just return the script, nothing else. Make it sound natural but compelling.`;
 
         const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-haiku-4-5-20251001',
             max_tokens: 200,
             temperature: 0.8,
             system: systemPrompt,
