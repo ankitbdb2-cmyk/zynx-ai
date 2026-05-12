@@ -13,12 +13,7 @@ router.post('/chat', async (req, res) => {
         const { messages } = req.body; 
         
         // Fetch properties from DB
-        const properties = await new Promise((resolve, reject) => {
-            db.all(`SELECT * FROM properties WHERE availability = 'Available' OR availability = 'Available now'`, [], (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows);
-            });
-        });
+        const properties = db.prepare(`SELECT * FROM properties WHERE availability = 'Available' OR availability = 'Available now'`).all();
 
         const rentalsStr = properties
             .filter(p => p.type === 'Rent')
@@ -120,12 +115,10 @@ collected: fill in whatever has been shared so far, leave empty string if not ye
 router.post('/save-lead', (req, res) => {
     const { name, phone, budget, visit_time, psychology_notes } = req.body;
     const query = `INSERT INTO leads (name, phone, budget, visit_time, psychology_notes) VALUES (?, ?, ?, ?, ?)`;
-    db.run(query, [name, phone, budget, visit_time, psychology_notes], function(err) {
-        if (err) {
-            console.error('Failed to save lead:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        console.log('Lead saved successfully:', this.lastID);
+    try {
+        const result = db.prepare(query).run(name, phone, budget, visit_time, psychology_notes);
+        const leadId = result.lastInsertRowid;
+        console.log('Lead saved successfully:', leadId);
         
         // Send email to agent
         if (process.env.AGENT_EMAIL && process.env.EMAIL_PASSWORD) {
@@ -155,8 +148,11 @@ router.post('/save-lead', (req, res) => {
             console.log(`[MOCK EMAIL] To: agent@propmind.com | Subject: New Lead: ${name} | Body: Phone: ${phone}, Budget: ${budget}, Visit: ${visit_time}, Psych: ${psychology_notes}`);
         }
         
-        res.json({ success: true, leadId: this.lastID });
-    });
+        res.json({ success: true, leadId });
+    } catch (err) {
+        console.error('Failed to save lead:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
 
 module.exports = router;
