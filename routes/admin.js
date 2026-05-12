@@ -15,83 +15,70 @@ router.post('/login', (req, res) => {
 });
 
 router.get('/leads', (req, res) => {
-    db.all(`SELECT * FROM leads ORDER BY date DESC`, [], (err, rows) => {
-        if (err) {
-            console.error('Failed to get leads:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
+    try {
+        const rows = db.prepare(`SELECT * FROM leads ORDER BY date DESC`).all();
         res.json({ leads: rows });
-    });
+    } catch (err) {
+        console.error('Failed to get leads:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
 
 router.post('/leads/:id/status', (req, res) => {
     const { status } = req.body;
-    db.run(`UPDATE leads SET status = ? WHERE id = ?`, [status, req.params.id], function(err) {
-        if (err) {
-            console.error('Failed to update lead status:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
+    try {
+        db.prepare(`UPDATE leads SET status = ? WHERE id = ?`).run(status, req.params.id);
         res.json({ success: true });
-    });
+    } catch (err) {
+        console.error('Failed to update lead status:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
 
 router.get('/stats', (req, res) => {
-    // Basic stats: total leads this week, conversion rate, hot leads count
-    // For simplicity we will consider URGENT and EXCITED as hot
-    const queries = {
-        total: new Promise((resolve, reject) => {
-            db.get(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')`, (err, row) => err ? reject(err) : resolve(row.count));
-        }),
-        hot: new Promise((resolve, reject) => {
-            db.get(`SELECT COUNT(*) as count FROM leads WHERE psychology_notes LIKE '%URGENT%' OR psychology_notes LIKE '%EXCITED%' OR psychology_notes LIKE '%HOT%'`, (err, row) => err ? reject(err) : resolve(row.count));
-        }),
-        closed: new Promise((resolve, reject) => {
-            db.get(`SELECT COUNT(*) as count FROM leads WHERE status = 'Closed'`, (err, row) => err ? reject(err) : resolve(row.count));
-        })
-    };
-
-    Promise.all([queries.total, queries.hot, queries.closed])
-        .then(([total, hot, closed]) => {
-            const conversionRate = total > 0 ? Math.round((closed / total) * 100) : 0;
-            res.json({ total, hot, conversionRate });
-        })
-        .catch(err => {
-            console.error('Failed to get stats:', err);
-            res.status(500).json({ error: 'Database error' });
-        });
+    try {
+        const total = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')`).get().count;
+        const hot = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE psychology_notes LIKE '%URGENT%' OR psychology_notes LIKE '%EXCITED%' OR psychology_notes LIKE '%HOT%'`).get().count;
+        const closed = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE status = 'Closed'`).get().count;
+        const conversionRate = total > 0 ? Math.round((closed / total) * 100) : 0;
+        res.json({ total, hot, conversionRate });
+    } catch (err) {
+        console.error('Failed to get stats:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
 
 // Property Management
 router.get('/properties', (req, res) => {
-    db.all(`SELECT * FROM properties ORDER BY date DESC`, [], (err, rows) => {
-        if (err) {
-            console.error('Failed to get properties:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
+    try {
+        const rows = db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
         res.json({ properties: rows });
-    });
+    } catch (err) {
+        console.error('Failed to get properties:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
 
 router.post('/properties', (req, res) => {
     const { type, title, area, price, bedrooms, description, availability } = req.body;
     const query = `INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-    db.run(query, [type, title, area, price, bedrooms, description, availability], function(err) {
-        if (err) {
-            console.error('Failed to add property:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
-        res.json({ success: true, id: this.lastID });
-    });
+    try {
+        const result = db.prepare(query).run(type, title, area, price, bedrooms, description, availability);
+        res.json({ success: true, id: result.lastInsertRowid });
+    } catch (err) {
+        console.error('Failed to add property:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
 
 router.delete('/properties/:id', (req, res) => {
-    db.run(`DELETE FROM properties WHERE id = ?`, [req.params.id], function(err) {
-        if (err) {
-            console.error('Failed to delete property:', err);
-            return res.status(500).json({ error: 'Database error' });
-        }
+    try {
+        db.prepare(`DELETE FROM properties WHERE id = ?`).run(req.params.id);
         res.json({ success: true });
-    });
+    } catch (err) {
+        console.error('Failed to delete property:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
 });
 
 module.exports = router;
