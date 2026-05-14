@@ -97,7 +97,7 @@ recommended_action: one specific sentence telling the agent exactly what to do n
 collected: fill in whatever has been shared so far, leave empty string if not yet shared.`;
 
         const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-sonnet-4-5',
             max_tokens: 500,
             temperature: 0.7,
             system: systemPrompt,
