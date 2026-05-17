@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PropMind - Real Estate AI Platform</title>
+    <title>Real Estate AI Platform</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/ghost.css">
+    <style>
+        /* Hide hero content until agency name is loaded — prevents PropMind flash */
+        .hero { opacity: 0; transition: opacity 0.3s ease; }
+        .hero.ready { opacity: 1; }
+    </style>
 </head>
 <body>
     <div class="hero">
-        <h1>PropMind</h1>
-        <p>The ultimate AI-powered operating system for elite real estate agencies.</p>
+        <h1 id="agency-title"><!-- loaded dynamically --></h1>
+        <p id="agency-tagline"><!-- loaded dynamically --></p>
         <div class="nav-links">
             <a href="/closer.html" class="btn btn-outline">Agent Tools (Closer)</a>
             <a href="/admin.html" class="btn btn-outline">Admin Dashboard</a>
@@ -21,6 +26,24 @@
     <!-- GHOST Chat Widget will be injected here -->
     <div id="ghost-widget-container"></div>
 
+    <script>
+        // Pull agency name from DB via /api/ghost/config — same source as chat widget
+        (async () => {
+            let agencyName = 'Sandcastle Properties'; // fallback
+            try {
+                const data = await fetch('/api/ghost/config').then(r => r.json());
+                if (data.agencyName) agencyName = data.agencyName;
+            } catch (e) {
+                console.warn('Could not load agency config, using fallback.');
+            }
+
+            document.getElementById('agency-title').textContent = agencyName;
+            document.getElementById('agency-tagline').textContent =
+                `Your digital agent who never sleeps, never misses a lead, and never replies late — built exclusively for ${agencyName}.`;
+            document.title = `${agencyName} - Real Estate AI Platform`;
+            document.querySelector('.hero').classList.add('ready');
+        })();
+    </script>
     <script src="/js/ghost.js"></script>
 </body>
 </html>
