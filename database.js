@@ -61,6 +61,22 @@ function initDb() {
         
         console.log('Seeded initial properties.');
     }
+
+    // Settings table — key/value store for runtime config
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    `).run();
+    console.log('Settings table initialized.');
+
+    // Seed agency_name from env if not already set
+    const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
+    if (!agencyRow) {
+        db.prepare(`INSERT INTO settings (key, value) VALUES ('agency_name', ?)`)
+          .run(process.env.AGENCY_NAME || 'Sandcastle Properties');
+    }
 }
 
 module.exports = db;

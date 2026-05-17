@@ -85,4 +85,31 @@ router.delete('/properties/:id', (req, res) => {
     }
 });
 
+// ─── Settings ───────────────────────────────────────────────────────────────
+router.get('/settings', (req, res) => {
+    try {
+        const rows = db.prepare(`SELECT key, value FROM settings`).all();
+        const settings = {};
+        rows.forEach(r => settings[r.key] = r.value);
+        res.json({ settings });
+    } catch (err) {
+        console.error('Failed to get settings:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.post('/settings', (req, res) => {
+    const { key, value } = req.body;
+    if (!key || value === undefined) return res.status(400).json({ error: 'key and value required' });
+    try {
+        db.prepare(`INSERT INTO settings (key, value) VALUES (?, ?)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
+          .run(key, value);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Failed to update setting:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 module.exports = router;

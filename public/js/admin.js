@@ -50,6 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loginScreen.classList.add('hidden');
                 dashboardScreen.classList.remove('hidden');
                 loadLeads();
+                loadSettings();
             } else {
                 alert('Invalid credentials');
             }
@@ -69,6 +70,38 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('logout-btn-props').addEventListener('click', logoutAction);
 
     refreshBtn.addEventListener('click', loadLeads);
+
+    // ─── Agency Name ─────────────────────────────────────────────────────────
+    async function loadSettings() {
+        try {
+            const res = await fetch('/api/admin/settings');
+            const data = await res.json();
+            if (data.settings && data.settings.agency_name) {
+                document.getElementById('agency-name-input').value = data.settings.agency_name;
+            }
+        } catch (e) {
+            console.error('Failed to load settings', e);
+        }
+    }
+
+    document.getElementById('save-agency-btn').addEventListener('click', async () => {
+        const value = document.getElementById('agency-name-input').value.trim();
+        if (!value) return;
+        try {
+            const res = await fetch('/api/admin/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'agency_name', value })
+            });
+            if (res.ok) {
+                const feedback = document.getElementById('agency-save-feedback');
+                feedback.style.opacity = '1';
+                setTimeout(() => feedback.style.opacity = '0', 2000);
+            }
+        } catch (e) {
+            console.error('Failed to save agency name', e);
+        }
+    });
 
     async function loadLeads() {
         try {

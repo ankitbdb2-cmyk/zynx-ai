@@ -53,6 +53,14 @@
                     </div>
                 </header>
 
+                <!-- Agency Name Setting -->
+                <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem; padding:1rem 1.25rem; background:var(--surface); border-radius:10px; border:1px solid var(--border);">
+                    <label for="agency-name-input" style="font-size:0.9rem; font-weight:600; color:var(--text-muted); white-space:nowrap;">Agency Name</label>
+                    <input type="text" id="agency-name-input" class="form-control" placeholder="e.g. Sandcastle Properties" style="max-width:320px; margin:0;">
+                    <button id="save-agency-btn" class="btn btn-primary">Save</button>
+                    <span id="agency-save-feedback" style="font-size:0.85rem; color:#4ade80; opacity:0; transition:opacity 0.3s;">✓ Saved</span>
+                </div>
+
                 <div class="stats-grid">
                     <div class="stat-card">
                         <h3>Total Leads (7d)</h3>

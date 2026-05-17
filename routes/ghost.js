@@ -10,12 +10,20 @@ const anthropic = new Anthropic({
 
 // ─── Config endpoint — frontend fetches this to get the agency name ───
 router.get('/config', (req, res) => {
-    res.json({ agencyName: process.env.AGENCY_NAME || 'Sandcastle Properties' });
+    try {
+        const row = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
+        const agencyName = row ? row.value : (process.env.AGENCY_NAME || 'Sandcastle Properties');
+        res.json({ agencyName });
+    } catch (e) {
+        res.json({ agencyName: process.env.AGENCY_NAME || 'Sandcastle Properties' });
+    }
 });
 
 router.post('/chat', async (req, res) => {
-    const agencyName = process.env.AGENCY_NAME || 'Sandcastle Properties';
     try {
+        const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
+        const agencyName = agencyRow ? agencyRow.value : (process.env.AGENCY_NAME || 'Sandcastle Properties');
+
         const { messages } = req.body; 
         
         // Fetch properties from DB
