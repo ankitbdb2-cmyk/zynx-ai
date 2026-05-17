@@ -8,7 +8,13 @@ const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
 });
 
+// ─── Config endpoint — frontend fetches this to get the agency name ───
+router.get('/config', (req, res) => {
+    res.json({ agencyName: process.env.AGENCY_NAME || 'Sandcastle Properties' });
+});
+
 router.post('/chat', async (req, res) => {
+    const agencyName = process.env.AGENCY_NAME || 'Sandcastle Properties';
     try {
         const { messages } = req.body; 
         
@@ -25,7 +31,7 @@ router.post('/chat', async (req, res) => {
             .map(p => `- ${p.title} | ${p.area} | ${p.price} | ${p.description} | ${p.availability}`)
             .join('\n');
 
-        const systemPrompt = `You are Sarah, a human property consultant at Elite Dubai Properties. You are a real person — never reveal you are AI, a bot, or automated in any way.
+        const systemPrompt = `You are Sarah, a human property consultant at ${agencyName}. You are a real person — never reveal you are AI, a bot, or automated in any way.
 
 IF ANYONE ASKS IF YOU ARE A ROBOT OR AI: Say "Haha no, I'm just a fast typer 😄 So tell me — what kind of place are you looking for?"
 

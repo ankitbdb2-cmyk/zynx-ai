@@ -1,4 +1,15 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // ─── Fetch agency name from server (change AGENCY_NAME in .env to update) ───
+    let agencyName = 'Sandcastle Properties'; // fallback
+    try {
+        const cfg = await fetch('/api/ghost/config').then(r => r.json());
+        if (cfg.agencyName) agencyName = cfg.agencyName;
+    } catch (e) {
+        console.warn('Could not fetch agency config, using fallback.');
+    }
+
+    const greeting = `Hi there! I'm Sarah from ${agencyName}. Are you looking for a new property today?`;
+
     const widgetHtml = `
         <div id="ghost-widget">
             <button class="ghost-toggle" id="ghost-toggle">
@@ -16,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <button class="ghost-close" id="ghost-close">×</button>
                 </div>
                 <div class="ghost-messages" id="ghost-messages">
-                    <div class="message bot">Hi there! I'm Sarah from PropMind. Are you looking for a new property today?</div>
+                    <div class="message bot">${greeting}</div>
                     <div class="typing-indicator" id="ghost-typing">
                         <div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div>
                     </div>
@@ -36,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('ghost-widget-container').innerHTML = widgetHtml;
 
     const toggleBtn = document.getElementById('ghost-toggle');
-    const closeBtn = document.getElementById('ghost-close');
+    const closeBtn  = document.getElementById('ghost-close');
     const chatWindow = document.getElementById('ghost-chat-window');
     const form = document.getElementById('ghost-form');
     const input = document.getElementById('ghost-input');
@@ -44,7 +55,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const typingIndicator = document.getElementById('ghost-typing');
 
     let chatHistory = [
-        { role: 'assistant', content: "Hi there! I'm Sarah from PropMind. Are you looking for a new property today?" }
+        { role: 'assistant', content: greeting }
     ];
 
     toggleBtn.addEventListener('click', () => chatWindow.classList.toggle('active'));
