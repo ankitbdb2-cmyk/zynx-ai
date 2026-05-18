@@ -105,7 +105,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     let botReply = data.reply;
                     let displayReply = botReply;
 
-                    let leadSaved = window.leadSaved || false;
                     if (botReply.includes('[LEAD_DATA]')) {
                         // Extract JSON if present
                         let jsonMatch = botReply.match(/\[LEAD_DATA\]\s*(\{[\s\S]*\})/);
@@ -114,22 +113,29 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 const newLeadData = JSON.parse(jsonMatch[1]);
                                 const collected = newLeadData.collected || {};
                                 
-                                // Only save if we have the critical info and haven't saved yet
-                                if (collected.name && collected.phone && !leadSaved) {
-                                    window.leadSaved = true;
+                                // Save lead when ANY meaningful data is collected
+                                const hasData = collected.name || collected.phone || collected.budget || collected.area;
+                                if (hasData) {
                                     const payload = {
-                                        name: collected.name || '',
+                                        name: collected.name || 'Unknown',
                                         phone: collected.phone || '',
                                         budget: collected.budget || '',
                                         visit_time: collected.timeline || '',
                                         psychology_notes: `Hot Score: ${newLeadData.hot_score} | Stage: ${newLeadData.lead_stage} | Signals: ${(newLeadData.signals || []).join(', ')} | Action: ${newLeadData.recommended_action} | Area: ${collected.area} | Beds: ${collected.bedrooms}`
                                     };
                                     
-                                    fetch('/api/ghost/save-lead', {
+                                    // If we already saved this lead, update it; otherwise create new
+                                    const endpoint = window.savedLeadId
+                                        ? `/api/ghost/save-lead?update=${window.savedLeadId}`
+                                        : '/api/ghost/save-lead';
+                                    
+                                    fetch(endpoint, {
                                         method: 'POST',
                                         headers: { 'Content-Type': 'application/json' },
                                         body: JSON.stringify(payload)
-                                    });
+                                    }).then(r => r.json()).then(d => {
+                                        if (d.leadId) window.savedLeadId = d.leadId;
+                                    }).catch(() => {});
                                 }
                             } catch (e) {
                                 console.error('Failed to parse lead data', e);

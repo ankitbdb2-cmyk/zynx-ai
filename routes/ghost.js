@@ -145,11 +145,24 @@ collected: fill in what has been shared so far. Leave as empty string if not yet
 
 router.post('/save-lead', (req, res) => {
     const { name, phone, budget, visit_time, psychology_notes } = req.body;
-    const query = `INSERT INTO leads (name, phone, budget, visit_time, psychology_notes) VALUES (?, ?, ?, ?, ?)`;
+    const updateId = req.query.update;
+
     try {
-        const info = db.prepare(query).run(name, phone, budget, visit_time, psychology_notes);
-        const leadId = info.lastInsertRowid;
-        console.log('Lead saved successfully:', leadId);
+        let leadId;
+
+        if (updateId) {
+            // Update existing lead with richer data
+            db.prepare(`UPDATE leads SET name = ?, phone = ?, budget = ?, visit_time = ?, psychology_notes = ? WHERE id = ?`)
+              .run(name, phone, budget, visit_time, psychology_notes, updateId);
+            leadId = Number(updateId);
+            console.log('Lead updated successfully:', leadId);
+        } else {
+            // Insert new lead
+            const info = db.prepare(`INSERT INTO leads (name, phone, budget, visit_time, psychology_notes) VALUES (?, ?, ?, ?, ?)`)
+              .run(name, phone, budget, visit_time, psychology_notes);
+            leadId = info.lastInsertRowid;
+            console.log('Lead saved successfully:', leadId);
+        }
         
         // Send email to agent
         if (process.env.AGENT_EMAIL && process.env.EMAIL_PASSWORD) {

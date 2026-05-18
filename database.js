@@ -1,7 +1,19 @@
 const Database = require('better-sqlite3');
 const path = require('path');
+const fs = require('fs');
 
-const dbPath = path.resolve(__dirname, 'propmind.db');
+// On Render, use persistent disk so DB survives redeploys
+const DATA_DIR = process.env.RENDER
+    ? '/opt/render/project/data'
+    : __dirname;
+
+// Ensure directory exists (for Render persistent disk)
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const dbPath = path.resolve(DATA_DIR, 'propmind.db');
+console.log('Database path:', dbPath);
 const db = new Database(dbPath);
 
 console.log('Connected to the SQLite database.');
