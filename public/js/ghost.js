@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // ─── Fetch agency name from server (change AGENCY_NAME in .env to update) ───
+    // ─── Fetch agency name from server ───────────────────────────────────────
     let agencyName = 'Sandcastle Properties'; // fallback
     try {
         const cfg = await fetch('/api/ghost/config').then(r => r.json());
@@ -78,6 +78,76 @@ document.addEventListener('DOMContentLoaded', async () => {
         typingIndicator.classList.remove('active');
     }
 
+    /**
+     * Parse the [LEAD_DATA] block from Sarah's reply.
+     * Returns the parsed JSON object or null if parsing fails.
+     */
+    function parseLeadData(reply) {
+        try {
+            const marker = '[LEAD_DATA]';
+            const idx = reply.indexOf(marker);
+            if (idx === -1) return null;
+
+            // Take everything after the marker, trim whitespace
+            const afterMarker = reply.slice(idx + marker.length).trim();
+
+            // Find the first { and the last } to extract the JSON object
+            const start = afterMarker.indexOf('{');
+            const end = afterMarker.lastIndexOf('}');
+            if (start === -1 || end === -1 || end < start) return null;
+
+            const jsonStr = afterMarker.slice(start, end + 1);
+            return JSON.parse(jsonStr);
+        } catch (e) {
+            console.error('[PropMind] Failed to parse LEAD_DATA JSON:', e.message);
+            return null;
+        }
+    }
+
+    /**
+     * Save or update a lead to the backend.
+     * Saves EVERY message so the admin can see real-time progression.
+     */
+    async function saveLead(leadData) {
+        const collected = leadData.collected || {};
+
+        // Only save if at least some data collected (name OR phone OR budget OR area)
+        const hasData = collected.name || collected.phone || collected.budget || collected.area;
+        if (!hasData) return;
+
+        const payload = {
+            name: collected.name || 'Unknown',
+            phone: collected.phone || '',
+            budget: collected.budget || '',
+            timeline: collected.timeline || '',
+            hot_score: leadData.hot_score || 0,
+            lead_stage: leadData.lead_stage || 'Cold',
+            signals: leadData.signals || [],
+            recommended_action: leadData.recommended_action || '',
+            area: collected.area || '',
+            bedrooms: collected.bedrooms || '',
+            visit_time: collected.timeline || '',
+            psychology_notes: `Score: ${leadData.hot_score}/10 | Stage: ${leadData.lead_stage} | Signals: ${(leadData.signals || []).join(', ')} | Action: ${leadData.recommended_action}`
+        };
+
+        const endpoint = window.savedLeadId
+            ? `/api/ghost/save-lead?update=${window.savedLeadId}`
+            : '/api/ghost/save-lead';
+
+        try {
+            const r = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const d = await r.json();
+            if (d.leadId) window.savedLeadId = d.leadId;
+            console.log('[PropMind] Lead saved/updated. ID:', window.savedLeadId, '| Score:', payload.hot_score);
+        } catch (err) {
+            console.error('[PropMind] Failed to save lead:', err);
+        }
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const text = input.value.trim();
@@ -97,58 +167,31 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             const data = await res.json();
             
-            const delay = Math.floor(Math.random() * (6000 - 2000 + 1)) + 2000;
+            const delay = Math.floor(Math.random() * (4000 - 1500 + 1)) + 1500;
             
-            setTimeout(() => {
+            setTimeout(async () => {
                 hideTyping();
                 if (data.reply) {
-                    let botReply = data.reply;
-                    let displayReply = botReply;
+                    const botReply = data.reply;
 
-                    if (botReply.includes('[LEAD_DATA]')) {
-                        // Extract JSON if present
-                        let jsonMatch = botReply.match(/\[LEAD_DATA\]\s*(\{[\s\S]*\})/);
-                        if (jsonMatch) {
-                            try {
-                                const newLeadData = JSON.parse(jsonMatch[1]);
-                                const collected = newLeadData.collected || {};
-                                
-                                // Save lead when ANY meaningful data is collected
-                                const hasData = collected.name || collected.phone || collected.budget || collected.area;
-                                if (hasData) {
-                                    const payload = {
-                                        name: collected.name || 'Unknown',
-                                        phone: collected.phone || '',
-                                        budget: collected.budget || '',
-                                        visit_time: collected.timeline || '',
-                                        psychology_notes: `Hot Score: ${newLeadData.hot_score} | Stage: ${newLeadData.lead_stage} | Signals: ${(newLeadData.signals || []).join(', ')} | Action: ${newLeadData.recommended_action} | Area: ${collected.area} | Beds: ${collected.bedrooms}`
-                                    };
-                                    
-                                    // If we already saved this lead, update it; otherwise create new
-                                    const endpoint = window.savedLeadId
-                                        ? `/api/ghost/save-lead?update=${window.savedLeadId}`
-                                        : '/api/ghost/save-lead';
-                                    
-                                    fetch(endpoint, {
-                                        method: 'POST',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify(payload)
-                                    }).then(r => r.json()).then(d => {
-                                        if (d.leadId) window.savedLeadId = d.leadId;
-                                    }).catch(() => {});
-                                }
-                            } catch (e) {
-                                console.error('Failed to parse lead data', e);
-                            }
-                        }
-                        
-                        // Clean up response for the user
-                        displayReply = botReply.split('[LEAD_DATA]')[0].trim();
-                    }
+                    // ── Parse and strip the LEAD_DATA block ──────────────────
+                    const leadData = parseLeadData(botReply);
                     
+                    // Clean display reply (strip everything from [LEAD_DATA] onward)
+                    const markerIdx = botReply.indexOf('[LEAD_DATA]');
+                    const displayReply = markerIdx !== -1
+                        ? botReply.slice(0, markerIdx).trim()
+                        : botReply.trim();
+
                     appendMessage(displayReply, 'bot');
-                    // Store the raw reply in history so context is preserved
+
+                    // Store the FULL raw reply in history so Sarah maintains context
                     chatHistory.push({ role: 'assistant', content: botReply });
+
+                    // ── Save lead to database ─────────────────────────────────
+                    if (leadData) {
+                        await saveLead(leadData);
+                    }
                 }
             }, delay);
 

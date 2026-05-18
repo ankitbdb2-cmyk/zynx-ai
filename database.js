@@ -26,6 +26,13 @@ function initDb() {
             name TEXT,
             phone TEXT,
             budget TEXT,
+            timeline TEXT,
+            hot_score INTEGER DEFAULT 0,
+            lead_stage TEXT DEFAULT 'Cold',
+            signals TEXT,
+            recommended_action TEXT,
+            area TEXT,
+            bedrooms TEXT,
             visit_time TEXT,
             psychology_notes TEXT,
             status TEXT DEFAULT 'New',
@@ -36,10 +43,27 @@ function initDb() {
     db.prepare(createLeadsTable).run();
     console.log('Leads table initialized.');
 
+    // Migrate existing leads table if new columns don't exist yet
+    const migrations = [
+        { col: 'hot_score', def: 'INTEGER DEFAULT 0' },
+        { col: 'lead_stage', def: "TEXT DEFAULT 'Cold'" },
+        { col: 'signals', def: 'TEXT' },
+        { col: 'recommended_action', def: 'TEXT' },
+        { col: 'area', def: 'TEXT' },
+        { col: 'bedrooms', def: 'TEXT' },
+        { col: 'timeline', def: 'TEXT' },
+    ];
+    for (const m of migrations) {
+        try {
+            db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run();
+            console.log(`Migrated: added ${m.col} column to leads.`);
+        } catch (e) { /* column already exists — safe to ignore */ }
+    }
+
     const createPropertiesTable = `
         CREATE TABLE IF NOT EXISTS properties (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT, -- 'Rent' or 'Sale'
+            type TEXT,
             title TEXT,
             area TEXT,
             price TEXT,
@@ -53,7 +77,8 @@ function initDb() {
     db.prepare(createPropertiesTable).run();
     console.log('Properties table initialized.');
 
-    // Seed with initial data if empty
+    // ── CRITICAL: Only seed if the table is completely empty ──────────────────
+    // This prevents overwriting user-added listings on every server restart.
     const countRow = db.prepare(`SELECT COUNT(*) as count FROM properties`).get();
     if (countRow.count === 0) {
         const seedData = [
@@ -65,13 +90,14 @@ function initDb() {
         ];
         const stmt = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`);
         
-        // Use a transaction for fast bulk insert
         const insertMany = db.transaction((properties) => {
             for (const p of properties) stmt.run(p);
         });
         insertMany(seedData);
         
-        console.log('Seeded initial properties.');
+        console.log('Seeded initial properties (first run only).');
+    } else {
+        console.log(`Skipping seed — ${countRow.count} properties already in database.`);
     }
 
     // Settings table — key/value store for runtime config

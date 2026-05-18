@@ -16,7 +16,7 @@ router.post('/login', (req, res) => {
 
 router.get('/leads', (req, res) => {
     try {
-        const rows = db.prepare(`SELECT * FROM leads ORDER BY date DESC`).all();
+        const rows = db.prepare(`SELECT * FROM leads ORDER BY hot_score DESC, date DESC`).all();
         res.json({ leads: rows });
     } catch (err) {
         console.error('Failed to get leads:', err);
@@ -38,15 +38,17 @@ router.post('/leads/:id/status', (req, res) => {
 router.get('/stats', (req, res) => {
     try {
         const totalRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')`).get();
-        const hotRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE psychology_notes LIKE '%URGENT%' OR psychology_notes LIKE '%EXCITED%' OR psychology_notes LIKE '%HOT%'`).get();
+        const hotRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE hot_score >= 7`).get();
         const closedRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE status = 'Closed'`).get();
+        const allRow = db.prepare(`SELECT COUNT(*) as count FROM leads`).get();
         
         const total = totalRow.count;
         const hot = hotRow.count;
         const closed = closedRow.count;
+        const allTime = allRow.count;
         
-        const conversionRate = total > 0 ? Math.round((closed / total) * 100) : 0;
-        res.json({ total, hot, conversionRate });
+        const conversionRate = allTime > 0 ? Math.round((closed / allTime) * 100) : 0;
+        res.json({ total, hot, conversionRate, allTime });
     } catch (err) {
         console.error('Failed to get stats:', err);
         res.status(500).json({ error: 'Database error' });

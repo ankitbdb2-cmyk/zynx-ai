@@ -59,8 +59,8 @@ LANGUAGE RULE: Always reply in the exact same language the customer writes in. A
 10. GOAL OF EVERY MESSAGE: qualify the lead one step further and move closer to booking a viewing.
 11. HANDLE MISMATCHES LIKE A TOP AGENT — when a lead asks for something not exactly in the listings, follow these 3 steps:
     STEP 1 — Acknowledge briefly: "I hear you, a 3BR villa is a great choice..."
-    STEP 2 — Pivot to the closest available match (different bedroom count, nearby area, slightly different price range) and frame it as better value or a smart alternative. Example: lead asks for 3BR villa at 7M → "I actually have something that might work even better — a stunning 4BR villa at 6.5M in the same area, more space for less money. Want to hear more about it?"
-    STEP 3 — If no close match exists at all, ask one question to uncover their flexibility: budget, area, or timeline. Example: "Are you flexible on area, or is location the priority for you?"
+    STEP 2 — Pivot to the closest available match (different bedroom count, nearby area, slightly different price range) and frame it as better value or a smart alternative.
+    STEP 3 — If no close match exists at all, ask one question to uncover their flexibility: budget, area, or timeline.
     NEVER say "I don't have that" and stop. NEVER hit a dead end. ALWAYS keep the conversation moving forward.
 
 --- YOUR QUALIFICATION GOAL ---
@@ -82,7 +82,7 @@ FOR SALE:
 ${salesStr || 'Currently no properties for sale available.'}
 
 --- LEAD DATA BLOCK ---
-AT THE END OF EVERY SINGLE RESPONSE — no exceptions — append this block exactly as shown:
+AT THE END OF EVERY SINGLE RESPONSE — no exceptions — append this block exactly as shown. The block must be on its own line and must be valid JSON:
 
 [LEAD_DATA]
 {
@@ -129,7 +129,7 @@ collected: fill in what has been shared so far. Leave as empty string if not yet
 
         const response = await anthropic.messages.create({
             model: 'claude-sonnet-4-5',
-            max_tokens: 300,
+            max_tokens: 500,
             temperature: 0.7,
             system: systemPrompt,
             messages: messages
@@ -144,7 +144,7 @@ collected: fill in what has been shared so far. Leave as empty string if not yet
 });
 
 router.post('/save-lead', (req, res) => {
-    const { name, phone, budget, visit_time, psychology_notes } = req.body;
+    const { name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes } = req.body;
     const updateId = req.query.update;
 
     try {
@@ -152,16 +152,27 @@ router.post('/save-lead', (req, res) => {
 
         if (updateId) {
             // Update existing lead with richer data
-            db.prepare(`UPDATE leads SET name = ?, phone = ?, budget = ?, visit_time = ?, psychology_notes = ? WHERE id = ?`)
-              .run(name, phone, budget, visit_time, psychology_notes, updateId);
+            db.prepare(`
+                UPDATE leads SET 
+                    name = ?, phone = ?, budget = ?, timeline = ?,
+                    hot_score = ?, lead_stage = ?, signals = ?, recommended_action = ?,
+                    area = ?, bedrooms = ?, visit_time = ?, psychology_notes = ?
+                WHERE id = ?
+            `).run(name, phone, budget, timeline, hot_score || 0, lead_stage || 'Cold',
+                   Array.isArray(signals) ? signals.join(', ') : (signals || ''),
+                   recommended_action, area, bedrooms, visit_time, psychology_notes, updateId);
             leadId = Number(updateId);
             console.log('Lead updated successfully:', leadId);
         } else {
             // Insert new lead
-            const info = db.prepare(`INSERT INTO leads (name, phone, budget, visit_time, psychology_notes) VALUES (?, ?, ?, ?, ?)`)
-              .run(name, phone, budget, visit_time, psychology_notes);
+            const info = db.prepare(`
+                INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `).run(name, phone, budget, timeline, hot_score || 0, lead_stage || 'Cold',
+                   Array.isArray(signals) ? signals.join(', ') : (signals || ''),
+                   recommended_action, area, bedrooms, visit_time, psychology_notes);
             leadId = info.lastInsertRowid;
-            console.log('Lead saved successfully:', leadId);
+            console.log('Lead saved successfully:', leadId, '| Hot score:', hot_score, '| Stage:', lead_stage);
         }
         
         // Send email to agent
@@ -177,8 +188,8 @@ router.post('/save-lead', (req, res) => {
             const mailOptions = {
                 from: process.env.AGENT_EMAIL,
                 to: process.env.AGENT_EMAIL,
-                subject: `New PropMind Lead: ${name}`,
-                text: `You have a new lead from GHOST.\n\nName: ${name}\nPhone: ${phone}\nBudget: ${budget}\nVisit Time: ${visit_time}\n\nPsychology Notes:\n${psychology_notes}`
+                subject: `New PropMind Lead: ${name} [Score: ${hot_score}/10]`,
+                text: `New lead from GHOST.\n\nName: ${name}\nPhone: ${phone}\nBudget: ${budget}\nArea: ${area}\nBedrooms: ${bedrooms}\nTimeline: ${timeline}\nHot Score: ${hot_score}/10\nStage: ${lead_stage}\nSignals: ${Array.isArray(signals) ? signals.join(', ') : signals}\n\nRecommended Action:\n${recommended_action}\n\nPsychology Notes:\n${psychology_notes}`
             };
 
             transporter.sendMail(mailOptions, (error, info) => {
@@ -189,7 +200,7 @@ router.post('/save-lead', (req, res) => {
                 }
             });
         } else {
-            console.log(`[MOCK EMAIL] To: agent@propmind.com | Subject: New Lead: ${name} | Body: Phone: ${phone}, Budget: ${budget}, Visit: ${visit_time}, Psych: ${psychology_notes}`);
+            console.log(`[MOCK EMAIL] Lead: ${name} | Score: ${hot_score} | Phone: ${phone} | Budget: ${budget}`);
         }
         
         res.json({ success: true, leadId: leadId });

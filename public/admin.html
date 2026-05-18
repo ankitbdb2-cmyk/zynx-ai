@@ -3,168 +3,235 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PropMind - Admin Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>PropMind COMMAND — Admin</title>
+    <meta name="description" content="PropMind AI — Admin Command Centre">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="/css/admin.css">
 </head>
 <body class="admin-bg">
-    
-    <!-- Login Screen -->
+
+    <!-- ══ LOGIN SCREEN ══════════════════════════════════════════════ -->
     <div id="login-screen" class="login-wrapper">
         <div class="login-card">
-            <h2 class="text-center mb-4">Admin Login</h2>
+            <div class="login-logo">
+                <div class="login-logo-mark">P</div>
+                <div class="login-title">PropMind COMMAND</div>
+                <div class="login-subtitle">Sign in to your agency dashboard</div>
+            </div>
             <form id="login-form">
                 <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="username" class="form-control" required>
+                    <label for="username">Username</label>
+                    <input type="text" id="username" class="form-control" placeholder="admin" required autocomplete="username">
                 </div>
                 <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" id="password" class="form-control" required>
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
                 </div>
-                <button type="submit" class="btn btn-primary w-full">Login</button>
+                <button type="submit" id="login-btn" class="btn btn-primary w-full" style="margin-top:0.5rem">Sign In</button>
             </form>
         </div>
     </div>
 
-    <!-- Dashboard Screen -->
+    <!-- ══ DASHBOARD SCREEN ═════════════════════════════════════════ -->
     <div id="dashboard-screen" class="hidden dashboard-wrapper">
+
+        <!-- Sidebar -->
         <aside class="sidebar">
             <div class="sidebar-header">
-                <h2>PropMind</h2>
+                <div class="sidebar-logo">P</div>
+                <div>
+                    <div class="sidebar-brand">PropMind</div>
+                    <div class="sidebar-brand-sub">Command</div>
+                </div>
             </div>
+
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" id="nav-leads">Leads Dashboard</a>
-                <a href="#" class="nav-item" id="nav-properties">Manage Properties</a>
-                <a href="/closer.html" class="nav-item">Go to Closer</a>
-                <a href="/" class="nav-item">Exit to Site</a>
+                <button class="nav-item active" id="nav-leads">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    Leads
+                </button>
+                <button class="nav-item" id="nav-properties">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Properties
+                </button>
+                <div class="nav-divider"></div>
+                <a href="/closer.html" class="nav-item">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    Closer Tool
+                </a>
+                <a href="/" class="nav-item">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                    Live Site
+                </a>
             </nav>
+
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="nav-item" style="color:var(--text-muted); width:100%">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Logout
+                </button>
+            </div>
         </aside>
 
+        <!-- Main -->
         <main class="dashboard-main">
-            <!-- Leads View -->
+
+            <!-- ── LEADS VIEW ── -->
             <div id="leads-view">
-                <header class="dashboard-header">
-                    <h2>Leads Overview</h2>
-                    <div class="header-actions">
-                        <button id="refresh-btn" class="btn btn-primary">Refresh</button>
-                        <button id="logout-btn-leads" class="btn btn-outline ml-4">Logout</button>
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Lead Intelligence</h1>
+                        <p class="page-subtitle">Ranked by hot score — highest priority first</p>
                     </div>
-                </header>
-
-                <!-- Agency Name Setting -->
-                <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:1.5rem; padding:1rem 1.25rem; background:var(--surface); border-radius:10px; border:1px solid var(--border);">
-                    <label for="agency-name-input" style="font-size:0.9rem; font-weight:600; color:var(--text-muted); white-space:nowrap;">Agency Name</label>
-                    <input type="text" id="agency-name-input" class="form-control" placeholder="e.g. Sandcastle Properties" style="max-width:320px; margin:0;">
-                    <button id="save-agency-btn" class="btn btn-primary">Save</button>
-                    <span id="agency-save-feedback" style="font-size:0.85rem; color:#4ade80; opacity:0; transition:opacity 0.3s;">✓ Saved</span>
+                    <div class="header-actions">
+                        <button id="refresh-btn" class="btn btn-outline">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Refresh
+                        </button>
+                    </div>
                 </div>
 
+                <!-- Agency Name Bar -->
+                <div class="agency-bar">
+                    <div class="agency-bar-label">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+                        Agency Name
+                    </div>
+                    <input type="text" id="agency-name-input" placeholder="e.g. Sandcastle Properties">
+                    <button id="save-agency-btn" class="btn btn-gold btn-sm">Save</button>
+                    <span id="agency-save-feedback" class="agency-save-feedback">✓ Saved</span>
+                </div>
+
+                <!-- Stats -->
                 <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Total Leads (7d)</h3>
-                        <div class="stat-value" id="stat-total">-</div>
+                    <div class="stat-card stat-total">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-label">New This Week</div>
+                        <div class="stat-value" id="stat-total">—</div>
                     </div>
-                    <div class="stat-card hot-leads">
-                        <h3>Hot/Urgent Leads</h3>
-                        <div class="stat-value" id="stat-hot">-</div>
+                    <div class="stat-card stat-hot">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-label">Hot Leads</div>
+                        <div class="stat-value" id="stat-hot">—</div>
                     </div>
-                    <div class="stat-card">
-                        <h3>Conversion Rate</h3>
-                        <div class="stat-value" id="stat-conv">-%</div>
+                    <div class="stat-card stat-conv">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-label">Conversion Rate</div>
+                        <div class="stat-value" id="stat-conv">—%</div>
+                    </div>
+                    <div class="stat-card stat-all">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-label">Total Leads</div>
+                        <div class="stat-value" id="stat-all">—</div>
                     </div>
                 </div>
 
-                <div class="leads-table-container">
-                    <table class="leads-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Name</th>
-                                <th>Phone</th>
-                                <th>Budget / Time</th>
-                                <th>Psychology Notes</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="leads-tbody">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+                <!-- Leads Table -->
+                <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">All Leads</div>
+                    </div>
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Score</th>
+                                    <th>Name</th>
+                                    <th>Phone</th>
+                                    <th>Budget</th>
+                                    <th>Area / Beds</th>
+                                    <th>Timeline</th>
+                                    <th>Signals</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leads-tbody">
+                                <tr><td colspan="9" class="empty-state">
+                                    <div class="empty-state-icon">📭</div>
+                                    <div class="empty-state-title">No leads yet</div>
+                                    <div class="empty-state-sub">Leads will appear here when visitors chat with Sarah</div>
+                                </td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
-            <!-- Properties View -->
+            <!-- ── PROPERTIES VIEW ── -->
             <div id="properties-view" class="hidden">
-                <header class="dashboard-header">
-                    <h2>Manage Properties</h2>
-                    <div class="header-actions">
-                        <button id="add-prop-btn" class="btn btn-primary">Add New Property</button>
-                        <button id="logout-btn-props" class="btn btn-outline ml-4">Logout</button>
+                <div class="page-header">
+                    <div>
+                        <h1 class="page-title">Property Listings</h1>
+                        <p class="page-subtitle">Sarah recommends only from these listings</p>
                     </div>
-                </header>
+                    <div class="header-actions">
+                        <button id="add-prop-btn" class="btn btn-primary">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                            Add Listing
+                        </button>
+                    </div>
+                </div>
 
-                <div class="leads-table-container">
-                    <table class="leads-table">
-                        <thead>
-                            <tr>
-                                <th>Type</th>
-                                <th>Title</th>
-                                <th>Area</th>
-                                <th>Price</th>
-                                <th>Bedrooms</th>
-                                <th>Description</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="properties-tbody">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+                <div class="section">
+                    <div id="property-grid" class="property-grid">
+                        <!-- Populated by JS -->
+                    </div>
+                    <div id="prop-empty" class="empty-state hidden">
+                        <div class="empty-state-icon">🏠</div>
+                        <div class="empty-state-title">No listings yet</div>
+                        <div class="empty-state-sub">Add your first property to get started</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Add Property Modal (Simple) -->
-            <div id="prop-modal" class="modal hidden">
-                <div class="modal-content">
-                    <h3>Add New Property</h3>
-                    <form id="prop-form">
-                        <div class="form-group">
-                            <label>Type</label>
-                            <select id="prop-type" class="form-control">
-                                <option value="Rent">Rent</option>
-                                <option value="Sale">Sale</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Title (e.g. Studio, 1BR)</label>
-                            <input type="text" id="prop-title" class="form-control" placeholder="Studio" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Area</label>
-                            <input type="text" id="prop-area" class="form-control" placeholder="Dubai Marina" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Price</label>
-                            <input type="text" id="prop-price" class="form-control" placeholder="AED 50,000/yr" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Bedrooms</label>
-                            <input type="text" id="prop-beds" class="form-control" placeholder="1BR or Studio" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Description</label>
-                            <input type="text" id="prop-desc" class="form-control" placeholder="Sea view, high floor">
-                        </div>
-                        <div class="modal-actions">
-                            <button type="button" id="close-modal" class="btn btn-outline">Cancel</button>
-                            <button type="submit" class="btn btn-primary">Save Property</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
         </main>
+    </div>
+
+    <!-- ── ADD PROPERTY MODAL ── -->
+    <div id="prop-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">Add New Listing</div>
+                <button class="modal-close" id="close-modal">✕</button>
+            </div>
+            <form id="prop-form">
+                <div class="form-group">
+                    <label>Listing Type</label>
+                    <select id="prop-type" class="form-control">
+                        <option value="Rent">For Rent</option>
+                        <option value="Sale">For Sale</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Title (e.g. Studio, 1BR, Villa)</label>
+                    <input type="text" id="prop-title" class="form-control" placeholder="Studio Apartment" required>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                    <div class="form-group">
+                        <label>Area / Location</label>
+                        <input type="text" id="prop-area" class="form-control" placeholder="Dubai Marina" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Bedrooms</label>
+                        <input type="text" id="prop-beds" class="form-control" placeholder="Studio / 1BR / 2BR" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Price</label>
+                    <input type="text" id="prop-price" class="form-control" placeholder="AED 65,000/yr or AED 950,000" required>
+                </div>
+                <div class="form-group">
+                    <label>Description / Key Feature</label>
+                    <input type="text" id="prop-desc" class="form-control" placeholder="Sea view, ready to move in">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" id="cancel-modal" class="btn btn-outline">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Listing</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script src="/js/admin.js"></script>
