@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.warn('Could not fetch agency config, using fallback.');
     }
 
-    const greeting = `Hi there! I'm Sarah from ${agencyName}. Are you looking for a new property today?`;
+    const greeting = `Hello! 👋`;
 
     const widgetHtml = `
         <div id="ghost-widget">
