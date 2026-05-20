@@ -1,0 +1,198 @@
+{
+  "1": {
+    "name": "IMARA",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — Marina Heights","area":"Dubai Marina","bedrooms":"2BR","price":"AED 2,200,000","description":"Full sea view, high floor, ready to move in, 2 parking spots"},
+      {"type":"Sale","title":"3BR Villa — Arabian Ranches III","area":"Arabian Ranches","bedrooms":"3BR","price":"AED 3,800,000","description":"Corner unit, landscaped garden, maid's room, handover Q1 2027"},
+      {"type":"Rent","title":"1BR Apartment — DIFC Living","area":"DIFC","bedrooms":"1BR","price":"AED 120,000/yr","description":"Fully furnished, walk to Gate Avenue, gym and pool access"},
+      {"type":"Sale","title":"Studio — JVC Bloom Towers","area":"JVC","bedrooms":"Studio","price":"AED 580,000","description":"Brand new, high ROI, investor deal, ready now"}
+    ]
+  },
+  "2": {
+    "name": "Common Living",
+    "listings": [
+      {"type":"Rent","title":"2BR Apartment — City Walk","area":"City Walk","bedrooms":"2BR","price":"AED 180,000/yr","description":"Boulevard view, modern finish, walk to restaurants and retail"},
+      {"type":"Sale","title":"1BR Apartment — Creek Harbour","area":"Dubai Creek Harbour","bedrooms":"1BR","price":"AED 1,350,000","description":"Burj Khalifa view, handover Q3 2026, 60/40 payment plan"},
+      {"type":"Sale","title":"3BR Townhouse — Damac Hills 2","area":"Damac Hills 2","bedrooms":"3BR","price":"AED 1,900,000","description":"Community pool, park view, upgraded kitchen, ready to move"}
+    ]
+  },
+  "3": {
+    "name": "Hyde Real Estate",
+    "listings": [
+      {"type":"Sale","title":"4BR Penthouse — Palm Jumeirah","area":"Palm Jumeirah","bedrooms":"4BR","price":"AED 25,000,000","description":"Private pool, full sea panorama, luxury finish, vacant on transfer"},
+      {"type":"Sale","title":"2BR Apartment — Business Bay","area":"Business Bay","bedrooms":"2BR","price":"AED 1,800,000","description":"Canal view, high floor, smart home, ready Q4 2026"},
+      {"type":"Rent","title":"3BR Villa — Emirates Hills","area":"Emirates Hills","bedrooms":"3BR","price":"AED 450,000/yr","description":"Golf course view, private garden, driver's room, gated community"},
+      {"type":"Sale","title":"1BR Apartment — Downtown Dubai","area":"Downtown Dubai","bedrooms":"1BR","price":"AED 2,100,000","description":"Burj Khalifa view, fully furnished, high floor, premium finish"}
+    ]
+  },
+  "4": {
+    "name": "Baron Luxe",
+    "listings": [
+      {"type":"Sale","title":"5BR Mansion — Emirates Hills","area":"Emirates Hills","bedrooms":"5BR","price":"AED 45,000,000","description":"Lake view, private cinema, elevator, smart home, fully landscaped"},
+      {"type":"Sale","title":"3BR Apartment — Bluewaters Island","area":"Bluewaters Island","bedrooms":"3BR","price":"AED 8,500,000","description":"Ain Dubai view, beachfront, concierge service, ready now"},
+      {"type":"Sale","title":"2BR Apartment — DIFC Residences","area":"DIFC","bedrooms":"2BR","price":"AED 4,200,000","description":"Sky garden access, panoramic city view, valet parking"}
+    ]
+  },
+  "5": {
+    "name": "DD Realty",
+    "listings": [
+      {"type":"Sale","title":"1BR Apartment — Dubai Hills Estate","area":"Dubai Hills","bedrooms":"1BR","price":"AED 1,100,000","description":"Park view, modern design, community pool, handover soon"},
+      {"type":"Sale","title":"3BR Villa — Tilal Al Ghaf","area":"Tilal Al Ghaf","bedrooms":"3BR","price":"AED 4,500,000","description":"Lagoon access, smart home, maid's room, Q2 2027 handover"},
+      {"type":"Rent","title":"2BR Apartment — JBR","area":"JBR","bedrooms":"2BR","price":"AED 160,000/yr","description":"Full sea view, walk to beach, furnished, parking included"},
+      {"type":"Sale","title":"Studio — Dubai South","area":"Dubai South","bedrooms":"Studio","price":"AED 450,000","description":"Near Expo City, high rental yield, brand new, ready"}
+    ]
+  },
+  "6": {
+    "name": "Rosenheim Luxury",
+    "listings": [
+      {"type":"Sale","title":"4BR Villa — Jumeirah Golf Estates","area":"Jumeirah Golf Estates","bedrooms":"4BR","price":"AED 12,500,000","description":"Earth course view, private pool, upgraded, vacant now"},
+      {"type":"Sale","title":"3BR Apartment — Jumeirah Beach Residence","area":"JBR","bedrooms":"3BR","price":"AED 5,800,000","description":"Duplex, full sea view, upgraded, 2 parking spots"},
+      {"type":"Sale","title":"2BR Apartment — Palm Jumeirah","area":"Palm Jumeirah","bedrooms":"2BR","price":"AED 6,200,000","description":"Beach access, Atlantis view, furnished, resort living"}
+    ]
+  },
+  "7": {
+    "name": "Think Realty",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — Sobha Hartland","area":"MBR City","bedrooms":"2BR","price":"AED 2,400,000","description":"Lagoon view, premium finish, handover Q1 2027, 70/30 plan"},
+      {"type":"Rent","title":"1BR Apartment — Dubai Marina","area":"Dubai Marina","bedrooms":"1BR","price":"AED 95,000/yr","description":"Marina view, fully furnished, gym and pool, walk to metro"},
+      {"type":"Sale","title":"3BR Townhouse — The Valley","area":"The Valley","bedrooms":"3BR","price":"AED 2,100,000","description":"Community park, modern design, maid's room, handover 2026"},
+      {"type":"Sale","title":"Studio — Arjan","area":"Arjan","bedrooms":"Studio","price":"AED 520,000","description":"Furnished, high ROI, pool view, ready to move in"}
+    ]
+  },
+  "8": {
+    "name": "Burj Blizz",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — Downtown Dubai","area":"Downtown Dubai","bedrooms":"2BR","price":"AED 3,500,000","description":"Full Burj Khalifa view, high floor, premium finish, ready now"},
+      {"type":"Sale","title":"1BR Apartment — Business Bay","area":"Business Bay","bedrooms":"1BR","price":"AED 1,400,000","description":"Canal view, smart home, gym and infinity pool, handover Q3 2026"},
+      {"type":"Rent","title":"3BR Apartment — Dubai Hills","area":"Dubai Hills","bedrooms":"3BR","price":"AED 200,000/yr","description":"Golf course view, upgraded, maid's room, community amenities"}
+    ]
+  },
+  "9": {
+    "name": "Park Lane Premium",
+    "listings": [
+      {"type":"Sale","title":"3BR Villa — Damac Lagoons","area":"Damac Lagoons","bedrooms":"3BR","price":"AED 2,800,000","description":"Crystal lagoon access, Mediterranean style, Q4 2026 handover"},
+      {"type":"Sale","title":"2BR Apartment — Za'abeel","area":"Za'abeel","bedrooms":"2BR","price":"AED 3,200,000","description":"Dubai Frame view, luxury tower, concierge, ready now"},
+      {"type":"Rent","title":"1BR Apartment — Al Barsha","area":"Al Barsha","bedrooms":"1BR","price":"AED 70,000/yr","description":"Near Mall of Emirates, furnished, metro access, family building"},
+      {"type":"Sale","title":"4BR Villa — Mudon","area":"Mudon","bedrooms":"4BR","price":"AED 3,600,000","description":"Corner plot, upgraded, landscaped garden, community pool"}
+    ]
+  },
+  "10": {
+    "name": "Vivid Realty",
+    "listings": [
+      {"type":"Sale","title":"1BR Apartment — Meydan","area":"Meydan","bedrooms":"1BR","price":"AED 950,000","description":"Racecourse view, modern tower, gym and pool, ready Q1 2027"},
+      {"type":"Sale","title":"3BR Apartment — Al Reem Island","area":"Abu Dhabi","bedrooms":"3BR","price":"AED 2,100,000","description":"Sea view, premium finish, community facilities, ready now"},
+      {"type":"Rent","title":"2BR Villa — Jumeirah Village Circle","area":"JVC","bedrooms":"2BR","price":"AED 110,000/yr","description":"Private garden, quiet community, near schools, unfurnished"}
+    ]
+  },
+  "11": {
+    "name": "Rush Hour",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — Jumeirah Lake Towers","area":"JLT","bedrooms":"2BR","price":"AED 1,500,000","description":"Lake view, high floor, renovated, 2 parking, ready now"},
+      {"type":"Sale","title":"1BR Apartment — Dubai Sports City","area":"Dubai Sports City","bedrooms":"1BR","price":"AED 650,000","description":"Stadium view, furnished, high rental yield, investor deal"},
+      {"type":"Rent","title":"3BR Villa — Springs","area":"Springs","bedrooms":"3BR","price":"AED 180,000/yr","description":"Lake view, upgraded, landscaped, near community center"},
+      {"type":"Sale","title":"Studio — International City","area":"International City","bedrooms":"Studio","price":"AED 320,000","description":"Fully rented, 8% yield, Dragon Mart access, budget investment"}
+    ]
+  },
+  "12": {
+    "name": "Percent and Co",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — Creek Harbour","area":"Dubai Creek Harbour","bedrooms":"2BR","price":"AED 2,600,000","description":"Creek Tower view, premium floor, 60/40 plan, handover Q2 2027"},
+      {"type":"Sale","title":"4BR Townhouse — Town Square","area":"Town Square","bedrooms":"4BR","price":"AED 2,300,000","description":"Park facing, upgraded, rooftop terrace, community pool"},
+      {"type":"Rent","title":"1BR Apartment — Motor City","area":"Motor City","bedrooms":"1BR","price":"AED 65,000/yr","description":"Autodrome view, furnished, balcony, gym and pool access"}
+    ]
+  },
+  "13": {
+    "name": "Sure Real Estate",
+    "listings": [
+      {"type":"Sale","title":"3BR Apartment — Dubai Marina","area":"Dubai Marina","bedrooms":"3BR","price":"AED 4,200,000","description":"Full marina view, duplex layout, upgraded, 2 parking spots"},
+      {"type":"Sale","title":"1BR Apartment — Jumeirah Village Triangle","area":"JVT","bedrooms":"1BR","price":"AED 780,000","description":"Pool view, brand new, high floor, ready to move in"},
+      {"type":"Rent","title":"2BR Apartment — Tecom","area":"Tecom","bedrooms":"2BR","price":"AED 90,000/yr","description":"Metro access, furnished option, near Internet City, balcony"},
+      {"type":"Sale","title":"Studio — Dubai Silicon Oasis","area":"Dubai Silicon Oasis","bedrooms":"Studio","price":"AED 420,000","description":"Tech hub location, furnished, high yield, ready now"}
+    ]
+  },
+  "14": {
+    "name": "Time Homes",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — MBR City","area":"MBR City","bedrooms":"2BR","price":"AED 1,900,000","description":"District One view, crystal lagoon, luxury finish, 2027 handover"},
+      {"type":"Sale","title":"3BR Villa — Al Furjan","area":"Al Furjan","bedrooms":"3BR","price":"AED 3,100,000","description":"Corner villa, upgraded kitchen, near metro, maid's room"},
+      {"type":"Rent","title":"1BR Apartment — Dubai Creek","area":"Dubai Creek","bedrooms":"1BR","price":"AED 75,000/yr","description":"Creek view, modern building, gym, covered parking"}
+    ]
+  },
+  "15": {
+    "name": "Blackstone Gulf",
+    "listings": [
+      {"type":"Sale","title":"3BR Penthouse — DIFC","area":"DIFC","bedrooms":"3BR","price":"AED 15,000,000","description":"360 degree view, private terrace, smart home, concierge service"},
+      {"type":"Sale","title":"2BR Apartment — Palm Jumeirah","area":"Palm Jumeirah","bedrooms":"2BR","price":"AED 5,500,000","description":"Beach club access, Atlantis view, furnished, ready now"},
+      {"type":"Sale","title":"1BR Apartment — City Walk","area":"City Walk","bedrooms":"1BR","price":"AED 2,800,000","description":"Meraas quality, boulevard view, retail below, premium lifestyle"},
+      {"type":"Rent","title":"4BR Villa — Al Barari","area":"Al Barari","bedrooms":"4BR","price":"AED 550,000/yr","description":"Botanical garden, private pool, ultra luxury, fully furnished"}
+    ]
+  },
+  "16": {
+    "name": "Blue Lagoons",
+    "listings": [
+      {"type":"Sale","title":"3BR Villa — Damac Lagoons","area":"Damac Lagoons","bedrooms":"3BR","price":"AED 2,500,000","description":"Crystal lagoon access, Santorini cluster, Q3 2026 handover"},
+      {"type":"Sale","title":"2BR Apartment — Emaar Beachfront","area":"Emaar Beachfront","bedrooms":"2BR","price":"AED 3,800,000","description":"Direct beach, sea view, premium tower, private beach club"},
+      {"type":"Rent","title":"1BR Apartment — Marina Promenade","area":"Dubai Marina","bedrooms":"1BR","price":"AED 100,000/yr","description":"Walk to beach, marina view, fully furnished, gym and pool"}
+    ]
+  },
+  "17": {
+    "name": "Profound Realtors",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — Sobha Seahaven","area":"Dubai Marina","bedrooms":"2BR","price":"AED 4,800,000","description":"Ultra luxury, sea view, Sobha quality, handover Q4 2026"},
+      {"type":"Sale","title":"3BR Townhouse — Expo Valley","area":"Dubai South","bedrooms":"3BR","price":"AED 2,200,000","description":"Nature inspired, smart home, community pool, Q1 2027"},
+      {"type":"Rent","title":"1BR Apartment — Jumeirah Beach","area":"Jumeirah","bedrooms":"1BR","price":"AED 85,000/yr","description":"Beach access, low rise, quiet area, recently renovated"},
+      {"type":"Sale","title":"Studio — Mag Creek Wellbeing","area":"Dubai South","bedrooms":"Studio","price":"AED 550,000","description":"Wellness community, pool and spa, green spaces, ready now"}
+    ]
+  },
+  "18": {
+    "name": "M and T Realty",
+    "listings": [
+      {"type":"Sale","title":"1BR Apartment — Binghatti Avenue","area":"Al Jaddaf","bedrooms":"1BR","price":"AED 850,000","description":"Modern design, near Creek, metro access, 60/40 plan"},
+      {"type":"Sale","title":"3BR Villa — Villanova","area":"Dubailand","bedrooms":"3BR","price":"AED 2,700,000","description":"Community park, La Quinta style, landscaped, ready now"},
+      {"type":"Rent","title":"2BR Apartment — Barsha Heights","area":"Barsha Heights","bedrooms":"2BR","price":"AED 85,000/yr","description":"Furnished, near Internet City, balcony, gym access"}
+    ]
+  },
+  "19": {
+    "name": "Amber Homes",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — Yas Island","area":"Abu Dhabi","bedrooms":"2BR","price":"AED 1,600,000","description":"Waterfront, near Ferrari World, premium finish, ready Q2 2027"},
+      {"type":"Sale","title":"4BR Villa — Saadiyat Island","area":"Abu Dhabi","bedrooms":"4BR","price":"AED 8,000,000","description":"Beach villa, cultural district, private pool, luxury finish"},
+      {"type":"Rent","title":"1BR Apartment — Khalifa City","area":"Abu Dhabi","bedrooms":"1BR","price":"AED 55,000/yr","description":"Spacious, near Masdar, covered parking, family community"},
+      {"type":"Sale","title":"3BR Townhouse — Al Raha","area":"Abu Dhabi","bedrooms":"3BR","price":"AED 2,900,000","description":"Waterfront community, rooftop terrace, marina view, ready"}
+    ]
+  },
+  "20": {
+    "name": "Haus 51",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — Al Wasl","area":"Al Wasl","bedrooms":"2BR","price":"AED 3,400,000","description":"Low rise boutique, near Jumeirah, rooftop pool, limited units"},
+      {"type":"Sale","title":"1BR Apartment — Dubai Design District","area":"D3","bedrooms":"1BR","price":"AED 1,700,000","description":"Creative hub, modern loft style, terrace, ready now"},
+      {"type":"Rent","title":"3BR Villa — Umm Suqeim","area":"Umm Suqeim","bedrooms":"3BR","price":"AED 250,000/yr","description":"Near Burj Al Arab, renovated, private garden, quiet street"}
+    ]
+  },
+  "21": {
+    "name": "Al Dar Aljadeed",
+    "listings": [
+      {"type":"Sale","title":"3BR Apartment — Ajman Corniche","area":"Ajman","bedrooms":"3BR","price":"AED 650,000","description":"Sea view, spacious layout, ready to move, affordable luxury"},
+      {"type":"Sale","title":"2BR Apartment — Sharjah Waterfront","area":"Sharjah","bedrooms":"2BR","price":"AED 800,000","description":"Waterfront community, modern design, family friendly, 2026"},
+      {"type":"Rent","title":"1BR Apartment — Al Nahda","area":"Sharjah","bedrooms":"1BR","price":"AED 30,000/yr","description":"Near Dubai border, furnished option, balcony, parking"},
+      {"type":"Sale","title":"4BR Villa — Al Zahia","area":"Sharjah","bedrooms":"4BR","price":"AED 2,800,000","description":"Gated community, premium finish, garden, maid's room"}
+    ]
+  },
+  "22": {
+    "name": "Redefined Realtors",
+    "listings": [
+      {"type":"Sale","title":"2BR Apartment — One Za'abeel","area":"Za'abeel","bedrooms":"2BR","price":"AED 7,500,000","description":"Iconic tower, sky concourse, Burj view, ultra premium finish"},
+      {"type":"Sale","title":"3BR Villa — Dubai Hills Grove","area":"Dubai Hills","bedrooms":"3BR","price":"AED 5,200,000","description":"Park view, modern architecture, smart home, ready 2026"},
+      {"type":"Rent","title":"1BR Apartment — DAMAC Hills","area":"DAMAC Hills","bedrooms":"1BR","price":"AED 72,000/yr","description":"Golf course community, furnished, Trump golf club access"}
+    ]
+  },
+  "23": {
+    "name": "Sandcastle Properties",
+    "listings": [
+      {"type":"Sale","title":"3BR Luxury Duplex — Cavalli Casa Tower","area":"Dubai Media City","bedrooms":"3BR","price":"AED 18,120,000","description":"Private pool, sea view, Palm Jumeirah view, handover Q2 2027, 50/50 payment plan"},
+      {"type":"Sale","title":"1BR Apartment — Skyhills Residences 2","area":"Dubai Science Park","bedrooms":"1BR","price":"AED 1,150,000","description":"High floor, fully furnished, handover soon"},
+      {"type":"Sale","title":"4BR Villa — Nad Al Sheba","area":"Nad Al Sheba","bedrooms":"4BR","price":"AED 6,500,000","description":"Big garden plot, fully furnished and upgraded, ready to move"},
+      {"type":"Sale","title":"3BR Beachfront Apartment — Beachfront Gates 2","area":"Dubai South","bedrooms":"3BR","price":"AED 2,500,000","description":"Beachfront living, 30/40 payment plan, 2% DLD fee waiver, 2 years service charge waiver, direct beach access, resort amenities, Q4 2026 handover"}
+    ]
+  }
+}

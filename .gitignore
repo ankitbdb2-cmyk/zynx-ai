@@ -1,3 +1,5 @@
 node_modules/
 .env
 propmind.db
+propmind.db-shm
+propmind.db-wal

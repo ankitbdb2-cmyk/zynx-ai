@@ -2,25 +2,58 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-// On Render, use persistent disk so DB survives redeploys
-const DATA_DIR = process.env.RENDER
-    ? '/opt/render/project/data'
+// ─── PERSISTENCE STRATEGY ───────────────────────────────────────────────────
+// On Render: use /opt/render/project/data (persistent disk mount point).
+//   → Render sets the RENDER env var automatically on all Render services.
+//   → You MUST configure a persistent disk in the Render dashboard mounted
+//     at /opt/render/project/data for data to survive redeploys.
+// Locally: use the project directory (__dirname).
+// ────────────────────────────────────────────────────────────────────────────
+
+const IS_RENDER = !!process.env.RENDER;
+const DATA_DIR = IS_RENDER
+    ? (process.env.DATA_DIR || '/opt/render/project/data')
     : __dirname;
 
-// Ensure directory exists (for Render persistent disk)
+// Ensure directory exists
 if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
+    console.log(`Created data directory: ${DATA_DIR}`);
 }
 
 const dbPath = path.resolve(DATA_DIR, 'propmind.db');
-console.log('Database path:', dbPath);
-const db = new Database(dbPath);
 
+// ─── STARTUP DIAGNOSTICS ────────────────────────────────────────────────────
+console.log('════════════════════════════════════════════════════════════');
+console.log('  DATABASE STARTUP DIAGNOSTICS');
+console.log('════════════════════════════════════════════════════════════');
+console.log(`  Environment:   ${IS_RENDER ? 'RENDER (production)' : 'LOCAL (development)'}`);
+console.log(`  Data directory: ${DATA_DIR}`);
+console.log(`  Database path:  ${dbPath}`);
+console.log(`  DB file exists: ${fs.existsSync(dbPath)}`);
+if (fs.existsSync(dbPath)) {
+    const stats = fs.statSync(dbPath);
+    console.log(`  DB file size:   ${stats.size} bytes`);
+    console.log(`  DB last modified: ${stats.mtime.toISOString()}`);
+}
+console.log('════════════════════════════════════════════════════════════');
+
+// Open database connection
+const db = new Database(dbPath);
 console.log('Connected to the SQLite database.');
+
+// ─── CRITICAL: Enable WAL mode for crash recovery and better concurrency ────
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = FULL');   // Maximum durability — flush to disk on every write
+db.pragma('foreign_keys = ON');
+console.log('Database pragmas set: WAL mode, FULL synchronous, foreign keys ON.');
+
+// ─── Initialize all tables and seed ONLY on first-ever run ──────────────────
 initDb();
 
 function initDb() {
-    const createLeadsTable = `
+    // ── 1. LEADS TABLE ──────────────────────────────────────────────────────
+    db.prepare(`
         CREATE TABLE IF NOT EXISTS leads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
@@ -38,9 +71,7 @@ function initDb() {
             status TEXT DEFAULT 'New',
             date DATETIME DEFAULT CURRENT_TIMESTAMP
         )
-    `;
-
-    db.prepare(createLeadsTable).run();
+    `).run();
     console.log('Leads table initialized.');
 
     // Migrate existing leads table if new columns don't exist yet
@@ -60,7 +91,8 @@ function initDb() {
         } catch (e) { /* column already exists — safe to ignore */ }
     }
 
-    const createPropertiesTable = `
+    // ── 2. PROPERTIES TABLE ─────────────────────────────────────────────────
+    db.prepare(`
         CREATE TABLE IF NOT EXISTS properties (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             type TEXT,
@@ -72,15 +104,22 @@ function initDb() {
             availability TEXT DEFAULT 'Available',
             date DATETIME DEFAULT CURRENT_TIMESTAMP
         )
-    `;
-
-    db.prepare(createPropertiesTable).run();
+    `).run();
     console.log('Properties table initialized.');
 
-    // ── CRITICAL: Only seed if the table is completely empty ──────────────────
-    // This prevents overwriting user-added listings on every server restart.
-    const countRow = db.prepare(`SELECT COUNT(*) as count FROM properties`).get();
-    if (countRow.count === 0) {
+    // ── 3. BACKUP CHECK: Count existing data BEFORE any seeding ─────────────
+    const propertyCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
+    const leadCount = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
+
+    console.log('────────────────────────────────────────────────────────────');
+    console.log(`  PERSISTENCE CHECK:`);
+    console.log(`    Properties in database: ${propertyCount}`);
+    console.log(`    Leads in database:      ${leadCount}`);
+    console.log('────────────────────────────────────────────────────────────');
+
+    // ── 4. SEED ONLY ON FIRST-EVER DEPLOYMENT (empty properties table) ──────
+    if (propertyCount === 0) {
+        console.log('  ⚠ Properties table is EMPTY — running first-time seed...');
         const seedData = [
             ['Rent', 'Studio', 'International City', 'AED 28,000/yr', 'Studio', 'Budget friendly', 'Available now'],
             ['Rent', 'Studio', 'Dubai Marina', 'AED 65,000/yr', 'Studio', 'Sea view', 'Available now'],
@@ -89,18 +128,22 @@ function initDb() {
             ['Sale', '1BR', 'Dubai Marina', 'AED 950,000', '1BR', 'Sea view, ready to move', 'Available now']
         ];
         const stmt = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-        
+
         const insertMany = db.transaction((properties) => {
             for (const p of properties) stmt.run(p);
         });
         insertMany(seedData);
-        
-        console.log('Seeded initial properties (first run only).');
+
+        console.log(`  ✓ Seeded ${seedData.length} initial properties (first run only).`);
     } else {
-        console.log(`Skipping seed — ${countRow.count} properties already in database.`);
+        console.log(`  ✓ Skipping seed — ${propertyCount} properties already in database. DATA PRESERVED.`);
     }
 
-    // Settings table — key/value store for runtime config
+    if (leadCount > 0) {
+        console.log(`  ✓ ${leadCount} leads preserved in database. No data lost.`);
+    }
+
+    // ── 5. SETTINGS TABLE ───────────────────────────────────────────────────
     db.prepare(`
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY,
@@ -115,6 +158,33 @@ function initDb() {
         db.prepare(`INSERT INTO settings (key, value) VALUES ('agency_name', ?)`)
           .run(process.env.AGENCY_NAME || 'Sandcastle Properties');
     }
+
+    // ── FINAL STATUS ────────────────────────────────────────────────────────
+    const finalPropertyCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
+    const finalLeadCount = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
+    console.log('════════════════════════════════════════════════════════════');
+    console.log('  DATABASE READY');
+    console.log(`    Total properties: ${finalPropertyCount}`);
+    console.log(`    Total leads:      ${finalLeadCount}`);
+    console.log('════════════════════════════════════════════════════════════');
 }
+
+// ─── Graceful shutdown — ensure WAL is checkpointed ─────────────────────────
+function gracefulShutdown() {
+    try {
+        console.log('Checkpointing WAL and closing database...');
+        db.pragma('wal_checkpoint(TRUNCATE)');
+        db.close();
+        console.log('Database closed cleanly.');
+    } catch (e) {
+        console.error('Error during database shutdown:', e.message);
+    }
+}
+
+process.on('SIGINT', () => { gracefulShutdown(); process.exit(0); });
+process.on('SIGTERM', () => { gracefulShutdown(); process.exit(0); });
+process.on('exit', () => {
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (e) { /* already closed */ }
+});
 
 module.exports = db;
