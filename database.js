@@ -2,80 +2,116 @@ const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
 
-// ─── PERSISTENCE STRATEGY ───────────────────────────────────────────────────
-// On Render: use /opt/render/project/data (persistent disk mount point).
-//   → Render sets the RENDER env var automatically on all Render services.
-//   → You MUST configure a persistent disk in the Render dashboard mounted
-//     at /opt/render/project/data for data to survive redeploys.
-// Locally: use the project directory (__dirname).
-// ────────────────────────────────────────────────────────────────────────────
-
+// ─── PERSISTENCE — production MUST use Render persistent disk ───────────────
 const IS_RENDER = !!process.env.RENDER;
+const RENDER_DATA_DIR = '/opt/render/project/data';
+const PRODUCTION_DB_FILE = path.join(RENDER_DATA_DIR, 'propmind.db');
+
 const DATA_DIR = IS_RENDER
-    ? (process.env.DATA_DIR || '/opt/render/project/data')
-    : __dirname;
+    ? (process.env.DATA_DIR || RENDER_DATA_DIR)
+    : (process.env.DATA_DIR || __dirname);
 
-// Ensure directory exists
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    console.log(`Created data directory: ${DATA_DIR}`);
+const dbPath = IS_RENDER
+    ? PRODUCTION_DB_FILE
+    : path.resolve(DATA_DIR, 'propmind.db');
+
+let dbReady = false;
+const persistenceInfo = {
+    environment: IS_RENDER ? 'production' : 'local',
+    dataDir: DATA_DIR,
+    dbPath,
+    dbExists: false,
+    dbSizeBytes: 0,
+    propertyCount: 0,
+    leadCount: 0,
+    seeded: false,
+    migratedFromEphemeral: false
+};
+
+function ensureDataDirectory() {
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+        console.log(`Created data directory: ${DATA_DIR}`);
+    }
 }
 
-const dbPath = path.resolve(DATA_DIR, 'propmind.db');
-
-// ─── STARTUP DIAGNOSTICS ────────────────────────────────────────────────────
-console.log('════════════════════════════════════════════════════════════');
-console.log('  DATABASE STARTUP DIAGNOSTICS');
-console.log('════════════════════════════════════════════════════════════');
-console.log(`  Environment:   ${IS_RENDER ? 'RENDER (production)' : 'LOCAL (development)'}`);
-console.log(`  Data directory: ${DATA_DIR}`);
-console.log(`  Database path:  ${dbPath}`);
-console.log(`  DB file exists: ${fs.existsSync(dbPath)}`);
-if (fs.existsSync(dbPath)) {
-    const stats = fs.statSync(dbPath);
-    console.log(`  DB file size:   ${stats.size} bytes`);
-    console.log(`  DB last modified: ${stats.mtime.toISOString()}`);
+function migrateEphemeralDbIfNeeded() {
+    if (!IS_RENDER) return;
+    const ephemeralPath = path.resolve(__dirname, 'propmind.db');
+    if (fs.existsSync(dbPath)) return;
+    if (!fs.existsSync(ephemeralPath)) return;
+    try {
+        fs.copyFileSync(ephemeralPath, dbPath);
+        persistenceInfo.migratedFromEphemeral = true;
+        console.log(`✓ Migrated database from ephemeral path → ${dbPath}`);
+        const wal = ephemeralPath + '-wal';
+        const shm = ephemeralPath + '-shm';
+        if (fs.existsSync(wal)) fs.copyFileSync(wal, dbPath + '-wal');
+        if (fs.existsSync(shm)) fs.copyFileSync(shm, dbPath + '-shm');
+    } catch (e) {
+        console.error('Ephemeral DB migration failed:', e.message);
+    }
 }
-console.log('════════════════════════════════════════════════════════════');
 
-// Open database connection
+function logStartupDiagnostics() {
+    console.log('════════════════════════════════════════════════════════════');
+    console.log('  DATABASE STARTUP DIAGNOSTICS');
+    console.log('════════════════════════════════════════════════════════════');
+    console.log(`  Environment:    ${persistenceInfo.environment}`);
+    console.log(`  Data directory: ${DATA_DIR}`);
+    console.log(`  Database path:  ${dbPath}`);
+    persistenceInfo.dbExists = fs.existsSync(dbPath);
+    console.log(`  DB file exists: ${persistenceInfo.dbExists}`);
+    if (persistenceInfo.dbExists) {
+        const stats = fs.statSync(dbPath);
+        persistenceInfo.dbSizeBytes = stats.size;
+        console.log(`  DB file size:   ${stats.size} bytes`);
+        console.log(`  DB modified:    ${stats.mtime.toISOString()}`);
+    }
+    if (IS_RENDER && DATA_DIR !== RENDER_DATA_DIR) {
+        console.warn(`  ⚠ WARNING: Expected Render disk at ${RENDER_DATA_DIR}`);
+    }
+    console.log('════════════════════════════════════════════════════════════');
+}
+
+ensureDataDirectory();
+migrateEphemeralDbIfNeeded();
+logStartupDiagnostics();
+
+if (!fs.existsSync(dbPath) && IS_RENDER) {
+    console.log('  ℹ No database on persistent disk yet — will create at:', dbPath);
+}
+
 const db = new Database(dbPath);
-console.log('Connected to the SQLite database.');
+console.log('Connected to SQLite.');
 
-// ─── CRITICAL: Enable WAL mode for crash recovery and better concurrency ────
 db.pragma('journal_mode = WAL');
-db.pragma('synchronous = FULL');   // Maximum durability — flush to disk on every write
+db.pragma('synchronous = FULL');
 db.pragma('foreign_keys = ON');
-console.log('Database pragmas set: WAL mode, FULL synchronous, foreign keys ON.');
+console.log('Pragmas: WAL, FULL sync, foreign keys ON.');
 
-// ─── Initialize all tables and seed ONLY on first-ever run ──────────────────
 initDb();
 
 function initDb() {
-    // ── 1. LEADS TABLE ──────────────────────────────────────────────────────
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS _meta (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    `).run();
+
     db.prepare(`
         CREATE TABLE IF NOT EXISTS leads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            phone TEXT,
-            budget TEXT,
-            timeline TEXT,
-            hot_score INTEGER DEFAULT 0,
-            lead_stage TEXT DEFAULT 'Cold',
-            signals TEXT,
-            recommended_action TEXT,
-            area TEXT,
-            bedrooms TEXT,
-            visit_time TEXT,
-            psychology_notes TEXT,
-            status TEXT DEFAULT 'New',
+            name TEXT, phone TEXT, budget TEXT, timeline TEXT,
+            hot_score INTEGER DEFAULT 0, lead_stage TEXT DEFAULT 'Cold',
+            signals TEXT, recommended_action TEXT, area TEXT, bedrooms TEXT,
+            visit_time TEXT, psychology_notes TEXT, status TEXT DEFAULT 'New',
             date DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `).run();
-    console.log('Leads table initialized.');
 
-    // Migrate existing leads table if new columns don't exist yet
-    const migrations = [
+    const leadMigrations = [
         { col: 'hot_score', def: 'INTEGER DEFAULT 0' },
         { col: 'lead_stage', def: "TEXT DEFAULT 'Cold'" },
         { col: 'signals', def: 'TEXT' },
@@ -83,28 +119,19 @@ function initDb() {
         { col: 'area', def: 'TEXT' },
         { col: 'bedrooms', def: 'TEXT' },
         { col: 'timeline', def: 'TEXT' },
-    ];
-    const leadMigrations = [
-        ...migrations,
         { col: 'viewing_offer_sent', def: 'INTEGER DEFAULT 0' },
         { col: 'viewing_confirmed', def: 'INTEGER DEFAULT 0' },
         { col: 'viewing_slot_id', def: 'INTEGER' },
     ];
     for (const m of leadMigrations) {
-        try {
-            db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run();
-            console.log(`Migrated: added ${m.col} column to leads.`);
-        } catch (e) { /* column already exists — safe to ignore */ }
+        try { db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }
     }
 
-    // ── AVAILABILITY & VIEWING SCHEDULER ────────────────────────────────────
     db.prepare(`
         CREATE TABLE IF NOT EXISTS availability_slots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            slot_datetime TEXT NOT NULL,
-            label TEXT,
-            is_booked INTEGER DEFAULT 0,
-            lead_id INTEGER,
+            slot_datetime TEXT NOT NULL, label TEXT,
+            is_booked INTEGER DEFAULT 0, lead_id INTEGER,
             date DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `).run();
@@ -112,44 +139,41 @@ function initDb() {
     db.prepare(`
         CREATE TABLE IF NOT EXISTS viewing_offers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            lead_id INTEGER NOT NULL,
-            slot_ids TEXT NOT NULL,
-            status TEXT DEFAULT 'pending',
-            selected_slot_id INTEGER,
+            lead_id INTEGER NOT NULL, slot_ids TEXT NOT NULL,
+            status TEXT DEFAULT 'pending', selected_slot_id INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `).run();
-    console.log('Availability & viewing tables initialized.');
 
-    // ── 2. PROPERTIES TABLE ─────────────────────────────────────────────────
     db.prepare(`
         CREATE TABLE IF NOT EXISTS properties (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            type TEXT,
-            title TEXT,
-            area TEXT,
-            price TEXT,
-            bedrooms TEXT,
-            description TEXT,
+            type TEXT, title TEXT, area TEXT, price TEXT,
+            bedrooms TEXT, description TEXT,
             availability TEXT DEFAULT 'Available',
             date DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `).run();
-    console.log('Properties table initialized.');
 
-    // ── 3. BACKUP CHECK: Count existing data BEFORE any seeding ─────────────
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY, value TEXT NOT NULL
+        )
+    `).run();
+
     const propertyCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
     const leadCount = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
+    persistenceInfo.propertyCount = propertyCount;
+    persistenceInfo.leadCount = leadCount;
 
     console.log('────────────────────────────────────────────────────────────');
-    console.log(`  PERSISTENCE CHECK:`);
-    console.log(`    Properties in database: ${propertyCount}`);
-    console.log(`    Leads in database:      ${leadCount}`);
+    console.log(`  PERSISTENCE CHECK: ${propertyCount} properties, ${leadCount} leads`);
     console.log('────────────────────────────────────────────────────────────');
 
-    // ── 4. SEED ONLY ON FIRST-EVER DEPLOYMENT (empty properties table) ──────
-    if (propertyCount === 0) {
-        console.log('  ⚠ Properties table is EMPTY — running first-time seed...');
+    const seedFlag = db.prepare(`SELECT value FROM _meta WHERE key = 'seed_completed'`).get();
+
+    if (propertyCount === 0 && !seedFlag) {
+        console.log('  ⚠ Empty properties table — first-time seed ONLY...');
         const seedData = [
             ['Rent', 'Studio', 'International City', 'AED 28,000/yr', 'Studio', 'Budget friendly', 'Available now'],
             ['Rent', 'Studio', 'Dubai Marina', 'AED 65,000/yr', 'Studio', 'Sea view', 'Available now'],
@@ -158,48 +182,34 @@ function initDb() {
             ['Sale', '1BR', 'Dubai Marina', 'AED 950,000', '1BR', 'Sea view, ready to move', 'Available now']
         ];
         const stmt = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-
-        const insertMany = db.transaction((properties) => {
-            for (const p of properties) stmt.run(p);
-        });
+        const insertMany = db.transaction((rows) => { for (const p of rows) stmt.run(p); });
         insertMany(seedData);
-
-        console.log(`  ✓ Seeded ${seedData.length} initial properties (first run only).`);
+        db.prepare(`INSERT INTO _meta (key, value) VALUES ('seed_completed', ?)`).run(new Date().toISOString());
+        persistenceInfo.seeded = true;
+        persistenceInfo.propertyCount = seedData.length;
+        console.log(`  ✓ Seeded ${seedData.length} properties (first run only).`);
     } else {
-        console.log(`  ✓ Skipping seed — ${propertyCount} properties already in database. DATA PRESERVED.`);
+        console.log(`  ✓ DATA PRESERVED — ${propertyCount} properties, ${leadCount} leads. No overwrite.`);
     }
 
-    if (leadCount > 0) {
-        console.log(`  ✓ ${leadCount} leads preserved in database. No data lost.`);
-    }
-
-    // ── 5. SETTINGS TABLE ───────────────────────────────────────────────────
-    db.prepare(`
-        CREATE TABLE IF NOT EXISTS settings (
-            key TEXT PRIMARY KEY,
-            value TEXT NOT NULL
-        )
-    `).run();
-    console.log('Settings table initialized.');
-
-    // Seed agency_name from env if not already set
     const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
     if (!agencyRow) {
         db.prepare(`INSERT INTO settings (key, value) VALUES ('agency_name', ?)`)
           .run(process.env.AGENCY_NAME || 'Sandcastle Properties');
     }
 
-    // ── FINAL STATUS ────────────────────────────────────────────────────────
-    const finalPropertyCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
-    const finalLeadCount = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
+    db.pragma('wal_checkpoint(PASSIVE)');
+    persistenceInfo.dbExists = fs.existsSync(dbPath);
+    if (persistenceInfo.dbExists) persistenceInfo.dbSizeBytes = fs.statSync(dbPath).size;
+
+    dbReady = true;
     console.log('════════════════════════════════════════════════════════════');
-    console.log('  DATABASE READY');
-    console.log(`    Total properties: ${finalPropertyCount}`);
-    console.log(`    Total leads:      ${finalLeadCount}`);
+    console.log('  DATABASE READY — serving requests allowed');
+    console.log(`    Path: ${dbPath}`);
+    console.log(`    Properties: ${persistenceInfo.propertyCount} | Leads: ${persistenceInfo.leadCount}`);
     console.log('════════════════════════════════════════════════════════════');
 }
 
-// ─── Graceful shutdown — ensure WAL is checkpointed ─────────────────────────
 function gracefulShutdown() {
     try {
         console.log('Checkpointing WAL and closing database...');
@@ -214,7 +224,11 @@ function gracefulShutdown() {
 process.on('SIGINT', () => { gracefulShutdown(); process.exit(0); });
 process.on('SIGTERM', () => { gracefulShutdown(); process.exit(0); });
 process.on('exit', () => {
-    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (e) { /* already closed */ }
+    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (e) { /* closed */ }
 });
+
+db.isReady = () => dbReady;
+db.getPersistenceInfo = () => ({ ...persistenceInfo, ready: dbReady });
+db.dbPath = dbPath;
 
 module.exports = db;

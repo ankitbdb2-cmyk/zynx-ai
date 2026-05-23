@@ -1,6 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../database');
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 router.post('/login', (req, res) => {
     const { username, password } = req.body;
@@ -211,10 +214,107 @@ router.get('/properties', (req, res) => {
 router.post('/properties', (req, res) => {
     const { type, title, area, price, bedrooms, description, availability } = req.body;
     try {
-        const info = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability);
+        const info = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability || 'Available now');
         res.json({ success: true, id: info.lastInsertRowid });
     } catch (err) {
         console.error('Failed to add property:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// ─── Smart Paste — AI extract from Property Finder text ─────────────────────
+router.post('/properties/parse-paste', async (req, res) => {
+    const { rawText } = req.body;
+    if (!rawText || !String(rawText).trim()) {
+        return res.status(400).json({ error: 'rawText required' });
+    }
+    if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    }
+
+    try {
+        const response = await anthropic.messages.create({
+            model: 'claude-sonnet-4-5',
+            max_tokens: 4000,
+            temperature: 0.2,
+            system: `You extract Dubai real estate listings from unstructured paste text (Property Finder, Bayut, emails, WhatsApp, etc.).
+Return ONLY valid JSON — no markdown, no explanation:
+{
+  "listings": [
+    {
+      "type": "Rent" or "Sale",
+      "title": "e.g. Studio Apartment, 1BR Villa",
+      "area": "Dubai area/neighborhood",
+      "price": "e.g. AED 65,000/yr or AED 950,000",
+      "bedrooms": "Studio, 1BR, 2BR, etc.",
+      "description": "key features in one line"
+    }
+  ]
+}
+Rules:
+- Extract every distinct property mentioned.
+- type must be exactly "Rent" or "Sale".
+- If rent vs sale unclear, infer from price format (/yr = Rent).
+- Never invent properties not in the text.
+- If a field is missing, use best guess from context or "—".`,
+            messages: [{ role: 'user', content: String(rawText).trim() }]
+        });
+
+        const text = response.content[0].text.trim();
+        const jsonStart = text.indexOf('{');
+        const jsonEnd = text.lastIndexOf('}');
+        if (jsonStart === -1 || jsonEnd === -1) {
+            return res.status(422).json({ error: 'AI could not parse listings. Try pasting more detail.' });
+        }
+
+        const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+        const listings = (parsed.listings || []).map(l => ({
+            type: l.type === 'Sale' ? 'Sale' : 'Rent',
+            title: l.title || 'Property',
+            area: l.area || 'Dubai',
+            price: l.price || '—',
+            bedrooms: l.bedrooms || '—',
+            description: l.description || '',
+            availability: 'Available now'
+        }));
+
+        res.json({ listings, count: listings.length });
+    } catch (err) {
+        console.error('Parse paste error:', err.message);
+        res.status(500).json({ error: 'Failed to parse listings: ' + err.message });
+    }
+});
+
+router.post('/properties/bulk', (req, res) => {
+    const { listings } = req.body;
+    if (!Array.isArray(listings) || listings.length === 0) {
+        return res.status(400).json({ error: 'listings array required' });
+    }
+    try {
+        const stmt = db.prepare(`
+            INSERT INTO properties (type, title, area, price, bedrooms, description, availability)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        `);
+        const insertAll = db.transaction((rows) => {
+            const ids = [];
+            for (const l of rows) {
+                const info = stmt.run(
+                    l.type === 'Sale' ? 'Sale' : 'Rent',
+                    l.title || 'Property',
+                    l.area || 'Dubai',
+                    l.price || '—',
+                    l.bedrooms || '—',
+                    l.description || '',
+                    l.availability || 'Available now'
+                );
+                ids.push(info.lastInsertRowid);
+            }
+            return ids;
+        });
+        const ids = insertAll(listings);
+        res.json({ success: true, saved: ids.length, ids });
+    } catch (err) {
+        console.error('Bulk save error:', err);
         res.status(500).json({ error: 'Database error' });
     }
 });

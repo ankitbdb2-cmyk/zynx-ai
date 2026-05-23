@@ -5,13 +5,26 @@ const path    = require('path');
 const fs      = require('fs');
 const db      = require('./database');
 
+if (!db.isReady()) {
+    console.error('FATAL: Database failed to initialize. Refusing to start.');
+    process.exit(1);
+}
+
 const app = express();
 const PORT = process.env.PORT || 8080;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' }));
 
-// ─── Dynamic homepage — SSR agency name into HTML (must be before express.static) ───
+function dbGuard(req, res, next) {
+    if (!db.isReady()) {
+        return res.status(503).json({ status: 'starting', message: 'Database initializing' });
+    }
+    next();
+}
+
+app.use(dbGuard);
+
 app.get('/', (req, res) => {
     try {
         const row = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
@@ -27,14 +40,30 @@ app.get('/', (req, res) => {
     }
 });
 
-// ─── Health check — keeps Render free tier warm via UptimeRobot pings ───
 app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', uptime: process.uptime() });
+    const p = db.getPersistenceInfo();
+    const liveProperties = db.prepare(`SELECT COUNT(*) as c FROM properties`).get().c;
+    const liveLeads = db.prepare(`SELECT COUNT(*) as c FROM leads`).get().c;
+    const dbExists = fs.existsSync(p.dbPath);
+    res.status(200).json({
+        status: 'ok',
+        uptime: process.uptime(),
+        persistence: {
+            ready: p.ready,
+            environment: p.environment,
+            dbPath: p.dbPath,
+            dbExists,
+            dbSizeBytes: dbExists ? fs.statSync(p.dbPath).size : 0,
+            propertyCount: liveProperties,
+            leadCount: liveLeads,
+            seeded: p.seeded,
+            migratedFromEphemeral: p.migratedFromEphemeral
+        }
+    });
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes
 const ghostRoutes = require('./routes/ghost');
 const closerRoutes = require('./routes/closer');
 const adminRoutes = require('./routes/admin');
@@ -44,5 +73,7 @@ app.use('/api/closer', closerRoutes);
 app.use('/api/admin', adminRoutes);
 
 app.listen(PORT, () => {
+    const p = db.getPersistenceInfo();
     console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Database: ${p.dbPath} (${p.propertyCount} properties, ${p.leadCount} leads)`);
 });

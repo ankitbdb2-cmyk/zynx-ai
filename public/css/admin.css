@@ -1,9 +1,5 @@
-/* ═══════════════════════════════════════════════════════════════
-   PropMind COMMAND — Premium Admin Dashboard
-   Dark Navy · Gold Accents · World-class SaaS aesthetic
-═══════════════════════════════════════════════════════════════ */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Instrument+Sans:wght@500;600;700&display=swap');
+/* PropMind Command — Admin Dashboard */
+@import url('design-system.css');
 
 :root {
     --navy-950: #04070f;
@@ -47,23 +43,24 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body.admin-bg {
-    font-family: 'Inter', system-ui, sans-serif;
-    background: var(--navy-900);
+    font-family: var(--font);
+    background: var(--void);
     color: var(--text);
     height: 100vh;
     overflow: hidden;
 }
 
-/* ── Animated BG ─────────────────────────────────────────── */
 body.admin-bg::before {
     content: '';
     position: fixed;
     inset: 0;
     background:
-        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(99,102,241,0.08) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(34,211,238,0.05) 0%, transparent 60%);
+        radial-gradient(ellipse 60% 50% at 15% 10%, rgba(59,130,246,0.15) 0%, transparent 50%),
+        radial-gradient(ellipse 50% 40% at 85% 90%, rgba(34,211,238,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse 40% 30% at 50% 50%, rgba(251,191,36,0.04) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
+    animation: mesh-drift 25s ease-in-out infinite alternate;
 }
 
 @keyframes anim-in {
@@ -1028,4 +1025,103 @@ body.admin-bg::before {
     .page-header, .section, .agency-bar { padding-left: 1rem; padding-right: 1rem; }
     .agency-bar { margin: 0 1rem 1.5rem; }
     .property-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Smart Paste Listings ─────────────────────────────────── */
+.smart-paste-panel {
+    margin: 0 2rem 1.5rem;
+    padding: 1.75rem;
+    background: var(--glass);
+    backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 0 40px rgba(59,130,246,0.08);
+}
+
+.smart-paste-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+}
+
+.smart-paste-title {
+    font-family: var(--font-display);
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.smart-paste-sub {
+    font-size: 0.82rem;
+    color: var(--text-2);
+    margin-top: 0.35rem;
+    line-height: 1.5;
+}
+
+.smart-paste-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+}
+
+.paste-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.paste-preview-card {
+    padding: 1.25rem;
+    background: rgba(0,0,0,0.35);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius);
+    transition: border-color 0.25s, transform 0.25s;
+}
+
+.paste-preview-card:hover {
+    border-color: rgba(59,130,246,0.3);
+    transform: translateY(-2px);
+}
+
+.paste-preview-card .type-badge { margin-bottom: 0.5rem; }
+
+.paste-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem;
+    color: var(--electric-bright);
+    font-size: 0.88rem;
+}
+
+.paste-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(59,130,246,0.2);
+    border-top-color: var(--electric);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.persistence-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 99px;
+    background: rgba(52,211,153,0.12);
+    color: var(--success);
+    border: 1px solid rgba(52,211,153,0.25);
+}
+
+.sidebar, .login-card, .stat-card, .chart-card, .kpi-card, .table-wrap, .prop-card {
+    backdrop-filter: blur(20px);
 }

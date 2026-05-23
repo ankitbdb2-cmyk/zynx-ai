@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PropMind Command — Admin</title>
     <meta name="description" content="PropMind AI — Admin Command Centre">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Instrument+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/design-system.css">
     <link rel="stylesheet" href="/css/admin.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
@@ -272,64 +272,60 @@
                 <div class="page-header">
                     <div>
                         <h1 class="page-title">Property Listings</h1>
-                        <p class="page-subtitle">Sarah recommends only from these listings</p>
+                        <p class="page-subtitle">Smart paste from Property Finder — AI organizes everything</p>
                     </div>
-                    <button id="add-prop-btn" class="btn btn-primary btn-sm">Add Listing</button>
+                    <span class="persistence-badge" id="persistence-badge" title="Database path">💾 Persistent storage</span>
                 </div>
+
+                <div class="smart-paste-panel glass">
+                    <div class="smart-paste-header">
+                        <div>
+                            <div class="smart-paste-title">✨ Smart Listing Paste</div>
+                            <p class="smart-paste-sub">Paste raw text from Property Finder, Bayut, or WhatsApp — any format. Claude extracts title, area, price, bedrooms, type & description automatically.</p>
+                        </div>
+                    </div>
+                    <textarea id="paste-raw" class="form-control" placeholder="Paste your listings here...
+
+Example:
+Studio for rent Dubai Marina
+AED 65,000 per year
+Sea view, gym, pool
+1BR JVC sale 450k AED
+..."></textarea>
+                    <div class="smart-paste-actions">
+                        <button type="button" id="parse-paste-btn" class="btn btn-primary">Extract Listings with AI</button>
+                        <button type="button" id="clear-paste-btn" class="btn btn-ghost">Clear</button>
+                    </div>
+                    <div id="paste-loading" class="paste-loading hidden">
+                        <div class="paste-spinner"></div>
+                        <span>Sarah is organizing your listings…</span>
+                    </div>
+                    <div id="paste-preview" class="hidden">
+                        <div class="section-header" style="margin-top:1.25rem">
+                            <div class="section-title">Preview — confirm before saving</div>
+                            <span id="paste-count" class="slot-count-badge"></span>
+                        </div>
+                        <div id="paste-preview-grid" class="paste-preview-grid"></div>
+                        <div class="smart-paste-actions">
+                            <button type="button" id="confirm-paste-btn" class="btn btn-gold">Save All Listings</button>
+                            <button type="button" id="cancel-paste-btn" class="btn btn-ghost">Discard</button>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="section">
+                    <div class="section-header">
+                        <div class="section-title">Active Listings</div>
+                    </div>
                     <div id="property-grid" class="property-grid"></div>
                     <div id="prop-empty" class="empty-state hidden">
                         <div class="empty-state-icon">🏠</div>
-                        <div class="empty-state-title">No listings yet</div>
+                        <div class="empty-state-title">No listings yet — paste above to get started</div>
                     </div>
                 </div>
             </div>
 
         </main>
-    </div>
-
-    <div id="prop-modal" class="modal hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <div class="modal-title">Add New Listing</div>
-                <button class="modal-close" id="close-modal">✕</button>
-            </div>
-            <form id="prop-form">
-                <div class="form-group">
-                    <label>Listing Type</label>
-                    <select id="prop-type" class="form-control">
-                        <option value="Rent">For Rent</option>
-                        <option value="Sale">For Sale</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Title</label>
-                    <input type="text" id="prop-title" class="form-control" required>
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
-                    <div class="form-group">
-                        <label>Area</label>
-                        <input type="text" id="prop-area" class="form-control" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Bedrooms</label>
-                        <input type="text" id="prop-beds" class="form-control" required>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Price</label>
-                    <input type="text" id="prop-price" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <input type="text" id="prop-desc" class="form-control">
-                </div>
-                <div class="modal-actions">
-                    <button type="button" id="cancel-modal" class="btn btn-outline">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Listing</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <script src="/js/admin.js"></script>

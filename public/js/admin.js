@@ -5,8 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const leadsTbody      = document.getElementById('leads-tbody');
     const propertyGrid    = document.getElementById('property-grid');
     const propEmpty       = document.getElementById('prop-empty');
-    const propModal       = document.getElementById('prop-modal');
-    const propForm        = document.getElementById('prop-form');
+    let pendingListings = [];
 
     const views = {
         analytics: document.getElementById('analytics-view'),
@@ -31,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (view === 'analytics') loadWeeklyAnalytics();
         else if (view === 'scheduler') { loadAvailability(); loadViewings(); }
         else if (view === 'leads') { loadLeads(); loadSettings(); }
-        else if (view === 'properties') loadProperties();
+        else if (view === 'properties') { loadProperties(); loadPersistenceBadge(); }
     }
 
     document.querySelectorAll('.nav-item[data-view]').forEach(btn => {
@@ -382,33 +381,100 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // ── Properties ──────────────────────────────────────────────────────
-    document.getElementById('add-prop-btn')?.addEventListener('click', () => propModal.classList.remove('hidden'));
-    document.getElementById('close-modal')?.addEventListener('click', () => propModal.classList.add('hidden'));
-    document.getElementById('cancel-modal')?.addEventListener('click', () => propModal.classList.add('hidden'));
-    propModal?.addEventListener('click', (e) => { if (e.target === propModal) propModal.classList.add('hidden'); });
+    // ── Smart Paste Listings ──────────────────────────────────────────────
+    async function loadPersistenceBadge() {
+        try {
+            const res = await fetch('/health');
+            const data = await res.json();
+            const badge = document.getElementById('persistence-badge');
+            if (badge && data.persistence) {
+                const p = data.persistence;
+                badge.title = `DB: ${p.dbPath}\n${p.propertyCount} properties, ${p.leadCount} leads`;
+                badge.textContent = `💾 ${p.propertyCount} listings · ${p.leadCount} leads saved`;
+            }
+        } catch (e) { /* ignore */ }
+    }
 
-    propForm?.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const propData = {
-            type: document.getElementById('prop-type').value,
-            title: document.getElementById('prop-title').value,
-            area: document.getElementById('prop-area').value,
-            price: document.getElementById('prop-price').value,
-            bedrooms: document.getElementById('prop-beds').value,
-            description: document.getElementById('prop-desc').value,
-            availability: 'Available now'
-        };
-        const res = await fetch('/api/admin/properties', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(propData)
-        });
-        if (res.ok) {
-            propModal.classList.add('hidden');
-            propForm.reset();
-            loadProperties();
+    document.getElementById('parse-paste-btn')?.addEventListener('click', async () => {
+        const rawText = document.getElementById('paste-raw').value.trim();
+        if (!rawText) return alert('Paste your Property Finder listings first.');
+
+        document.getElementById('paste-loading').classList.remove('hidden');
+        document.getElementById('paste-preview').classList.add('hidden');
+
+        try {
+            const res = await fetch('/api/admin/properties/parse-paste', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rawText })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Parse failed');
+
+            pendingListings = data.listings || [];
+            if (!pendingListings.length) {
+                alert('No listings found in that text. Try pasting more detail.');
+                return;
+            }
+            renderPastePreview(pendingListings);
+            document.getElementById('paste-preview').classList.remove('hidden');
+            document.getElementById('paste-count').textContent = `${pendingListings.length} found`;
+        } catch (e) {
+            alert(e.message || 'Failed to parse listings.');
+        } finally {
+            document.getElementById('paste-loading').classList.add('hidden');
         }
+    });
+
+    function renderPastePreview(listings) {
+        const grid = document.getElementById('paste-preview-grid');
+        grid.innerHTML = listings.map((l, i) => `
+            <div class="paste-preview-card">
+                <span class="type-badge ${l.type.toLowerCase()}">${escHtml(l.type)}</span>
+                <div class="prop-card-title" style="margin:0.5rem 0">${escHtml(l.title)}</div>
+                <div style="font-size:0.82rem;color:var(--text-subtle)">📍 ${escHtml(l.area)}</div>
+                <div style="font-weight:700;color:var(--gold);margin:0.35rem 0">${escHtml(l.price)}</div>
+                <div style="font-size:0.78rem;color:var(--text-muted)">🛏 ${escHtml(l.bedrooms)} · ${escHtml(l.description || '')}</div>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('confirm-paste-btn')?.addEventListener('click', async () => {
+        if (!pendingListings.length) return;
+        const btn = document.getElementById('confirm-paste-btn');
+        btn.textContent = 'Saving…';
+        btn.disabled = true;
+        try {
+            const res = await fetch('/api/admin/properties/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ listings: pendingListings })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Save failed');
+            pendingListings = [];
+            document.getElementById('paste-raw').value = '';
+            document.getElementById('paste-preview').classList.add('hidden');
+            loadProperties();
+            loadPersistenceBadge();
+            alert(`✓ Saved ${data.saved} listings!`);
+        } catch (e) {
+            alert(e.message);
+        } finally {
+            btn.textContent = 'Save All Listings';
+            btn.disabled = false;
+        }
+    });
+
+    document.getElementById('cancel-paste-btn')?.addEventListener('click', () => {
+        pendingListings = [];
+        document.getElementById('paste-preview').classList.add('hidden');
+    });
+
+    document.getElementById('clear-paste-btn')?.addEventListener('click', () => {
+        document.getElementById('paste-raw').value = '';
+        pendingListings = [];
+        document.getElementById('paste-preview').classList.add('hidden');
     });
 
     async function loadProperties() {
