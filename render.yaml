@@ -1,0 +1,15 @@
+# Render Blueprint — sync in dashboard: Settings → Blueprint → Connect
+services:
+  - type: web
+    name: zynx-ai
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm rebuild better-sqlite3
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 18.20.4
+      - key: NODE_ENV
+        value: production
