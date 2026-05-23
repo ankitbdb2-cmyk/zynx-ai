@@ -213,4 +213,145 @@ router.post('/save-lead', (req, res) => {
     }
 });
 
+function formatSlot(dt, label) {
+    const d = new Date(dt);
+    const day = d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    const time = d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return label ? `${label} — ${day} at ${time}` : `${day} at ${time}`;
+}
+
+function sendAgentNotification(subject, text) {
+    if (!process.env.AGENT_EMAIL || !process.env.EMAIL_PASSWORD) {
+        console.log(`[MOCK NOTIFY] ${subject}\n${text}`);
+        return;
+    }
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: { user: process.env.AGENT_EMAIL, pass: process.env.EMAIL_PASSWORD }
+    });
+    transporter.sendMail({
+        from: process.env.AGENT_EMAIL,
+        to: process.env.AGENT_EMAIL,
+        subject,
+        text
+    }, (err) => { if (err) console.error('Notify failed:', err.message); });
+}
+
+// ─── Auto Viewing Scheduler (score 8+) ──────────────────────────────────────
+router.post('/viewing-offer', (req, res) => {
+    const { leadId } = req.body;
+    if (!leadId) return res.status(400).json({ error: 'leadId required' });
+
+    try {
+        const lead = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
+        if (!lead) return res.status(404).json({ error: 'Lead not found' });
+        if ((lead.hot_score || 0) < 8) {
+            return res.json({ skipped: true, reason: 'Score below threshold' });
+        }
+        if (lead.viewing_offer_sent) {
+            const existing = db.prepare(`
+                SELECT * FROM viewing_offers WHERE lead_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1
+            `).get(leadId);
+            if (existing) {
+                const slotIds = JSON.parse(existing.slot_ids);
+                const slots = slotIds.map(id =>
+                    db.prepare(`SELECT * FROM availability_slots WHERE id = ?`).get(id)
+                ).filter(Boolean);
+                return res.json({
+                    offerId: existing.id,
+                    slots,
+                    offerMessage: buildOfferMessage(lead.name, slots)
+                });
+            }
+        }
+
+        const slots = db.prepare(`
+            SELECT * FROM availability_slots
+            WHERE is_booked = 0 AND slot_datetime > datetime('now')
+            ORDER BY slot_datetime ASC LIMIT 3
+        `).all();
+
+        if (slots.length === 0) {
+            return res.json({
+                skipped: true,
+                reason: 'no_slots',
+                offerMessage: null
+            });
+        }
+
+        const slotIds = slots.map(s => s.id);
+        const offerInfo = db.prepare(`
+            INSERT INTO viewing_offers (lead_id, slot_ids, status) VALUES (?, ?, 'pending')
+        `).run(leadId, JSON.stringify(slotIds));
+
+        db.prepare(`UPDATE leads SET viewing_offer_sent = 1 WHERE id = ?`).run(leadId);
+
+        const offerMessage = buildOfferMessage(lead.name, slots);
+        res.json({ offerId: offerInfo.lastInsertRowid, slots, offerMessage });
+    } catch (err) {
+        console.error('Viewing offer error:', err);
+        res.status(500).json({ error: 'Failed to create viewing offer' });
+    }
+});
+
+function buildOfferMessage(name, slots) {
+    const firstName = (name && name !== 'Unknown') ? name.split(' ')[0] : 'there';
+    let msg = `Great news ${firstName}! 🏠 I'd love to show you the property in person. Pick a viewing time that works for you:\n\n`;
+    slots.forEach((s, i) => {
+        msg += `**${i + 1}.** ${formatSlot(s.slot_datetime, s.label)}\n`;
+    });
+    msg += `\nJust reply with **1**, **2**, or **3** to confirm your slot.`;
+    return msg;
+}
+
+router.post('/confirm-viewing', (req, res) => {
+    const { leadId, choice, offerId } = req.body;
+    if (!leadId || !choice) return res.status(400).json({ error: 'leadId and choice required' });
+
+    try {
+        const offer = offerId
+            ? db.prepare(`SELECT * FROM viewing_offers WHERE id = ? AND lead_id = ?`).get(offerId, leadId)
+            : db.prepare(`SELECT * FROM viewing_offers WHERE lead_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1`).get(leadId);
+
+        if (!offer || offer.status !== 'pending') {
+            return res.status(400).json({ error: 'No pending viewing offer' });
+        }
+
+        const slotIds = JSON.parse(offer.slot_ids);
+        const idx = parseInt(choice, 10) - 1;
+        if (idx < 0 || idx >= slotIds.length) {
+            return res.status(400).json({ error: 'Invalid choice' });
+        }
+
+        const slotId = slotIds[idx];
+        const slot = db.prepare(`SELECT * FROM availability_slots WHERE id = ? AND is_booked = 0`).get(slotId);
+        if (!slot) return res.status(400).json({ error: 'Slot no longer available' });
+
+        const lead = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
+        const slotLabel = formatSlot(slot.slot_datetime, slot.label);
+
+        db.prepare(`UPDATE availability_slots SET is_booked = 1, lead_id = ? WHERE id = ?`).run(leadId, slotId);
+        db.prepare(`UPDATE viewing_offers SET status = 'confirmed', selected_slot_id = ? WHERE id = ?`).run(slotId, offer.id);
+        db.prepare(`
+            UPDATE leads SET viewing_confirmed = 1, viewing_slot_id = ?, status = 'Visit Scheduled'
+            WHERE id = ?
+        `).run(slotId, leadId);
+
+        const leadConfirm = `✅ Perfect! Your viewing is confirmed for **${slotLabel}**. I'll meet you there — see you soon! 🎉`;
+        const agentConfirm = `Viewing booked: ${lead.name} (${lead.phone}) — ${slotLabel}`;
+
+        sendAgentNotification(`Viewing Confirmed: ${lead.name}`, agentConfirm);
+
+        res.json({
+            success: true,
+            leadMessage: leadConfirm,
+            agentMessage: agentConfirm,
+            slot: { id: slotId, label: slotLabel, datetime: slot.slot_datetime }
+        });
+    } catch (err) {
+        console.error('Confirm viewing error:', err);
+        res.status(500).json({ error: 'Failed to confirm viewing' });
+    }
+});
+
 module.exports = router;

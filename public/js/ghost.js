@@ -57,16 +57,72 @@ document.addEventListener('DOMContentLoaded', async () => {
     let chatHistory = [
         { role: 'assistant', content: greeting }
     ];
+    let pendingOfferId = null;
+    let viewingOfferSent = false;
 
     toggleBtn.addEventListener('click', () => chatWindow.classList.toggle('active'));
     closeBtn.addEventListener('click', () => chatWindow.classList.remove('active'));
 
+    function formatDisplayText(text) {
+        return text
+            .replace(/\*\*(.*?)\*\*/g, '$1')
+            .replace(/\n/g, '\n');
+    }
+
     function appendMessage(text, sender) {
         const div = document.createElement('div');
         div.className = `message ${sender}`;
-        div.textContent = text;
+        div.style.whiteSpace = 'pre-wrap';
+        div.textContent = formatDisplayText(text);
         messagesContainer.insertBefore(div, typingIndicator);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    async function maybeOfferViewing(hotScore) {
+        if (hotScore < 8 || viewingOfferSent || !window.savedLeadId) return;
+        try {
+            const res = await fetch('/api/ghost/viewing-offer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ leadId: window.savedLeadId })
+            });
+            const data = await res.json();
+            if (data.offerMessage) {
+                viewingOfferSent = true;
+                pendingOfferId = data.offerId;
+                appendMessage(data.offerMessage, 'bot');
+                chatHistory.push({ role: 'assistant', content: data.offerMessage });
+            }
+        } catch (e) {
+            console.error('[PropMind] Viewing offer failed:', e);
+        }
+    }
+
+    async function confirmViewingChoice(choice) {
+        showTyping();
+        try {
+            const res = await fetch('/api/ghost/confirm-viewing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    leadId: window.savedLeadId,
+                    choice,
+                    offerId: pendingOfferId
+                })
+            });
+            const data = await res.json();
+            hideTyping();
+            if (data.success && data.leadMessage) {
+                appendMessage(data.leadMessage, 'bot');
+                chatHistory.push({ role: 'assistant', content: data.leadMessage });
+                pendingOfferId = null;
+            } else {
+                appendMessage("That slot isn't available — please pick 1, 2, or 3 from the options above.", 'bot');
+            }
+        } catch (e) {
+            hideTyping();
+            appendMessage("Sorry, I couldn't confirm that slot. Please try again.", 'bot');
+        }
     }
 
     function showTyping() {
@@ -157,6 +213,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         appendMessage(text, 'user');
         chatHistory.push({ role: 'user', content: text });
 
+        if (pendingOfferId && /^[123]$/.test(text) && window.savedLeadId) {
+            await confirmViewingChoice(text);
+            return;
+        }
+
         showTyping();
 
         try {
@@ -191,6 +252,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     // ── Save lead to database ─────────────────────────────────
                     if (leadData) {
                         await saveLead(leadData);
+                        const score = leadData.hot_score || 0;
+                        if (score >= 8) {
+                            setTimeout(() => maybeOfferViewing(score), 800);
+                        }
                     }
                 }
             }, delay);

@@ -27,6 +27,11 @@ app.get('/', (req, res) => {
     }
 });
 
+// ─── Health check — keeps Render free tier warm via UptimeRobot pings ───
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', uptime: process.uptime() });
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes

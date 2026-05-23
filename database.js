@@ -84,12 +84,42 @@ function initDb() {
         { col: 'bedrooms', def: 'TEXT' },
         { col: 'timeline', def: 'TEXT' },
     ];
-    for (const m of migrations) {
+    const leadMigrations = [
+        ...migrations,
+        { col: 'viewing_offer_sent', def: 'INTEGER DEFAULT 0' },
+        { col: 'viewing_confirmed', def: 'INTEGER DEFAULT 0' },
+        { col: 'viewing_slot_id', def: 'INTEGER' },
+    ];
+    for (const m of leadMigrations) {
         try {
             db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run();
             console.log(`Migrated: added ${m.col} column to leads.`);
         } catch (e) { /* column already exists — safe to ignore */ }
     }
+
+    // ── AVAILABILITY & VIEWING SCHEDULER ────────────────────────────────────
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS availability_slots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slot_datetime TEXT NOT NULL,
+            label TEXT,
+            is_booked INTEGER DEFAULT 0,
+            lead_id INTEGER,
+            date DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS viewing_offers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lead_id INTEGER NOT NULL,
+            slot_ids TEXT NOT NULL,
+            status TEXT DEFAULT 'pending',
+            selected_slot_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+    console.log('Availability & viewing tables initialized.');
 
     // ── 2. PROPERTIES TABLE ─────────────────────────────────────────────────
     db.prepare(`
