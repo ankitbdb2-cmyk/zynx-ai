@@ -122,10 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             responsive: true,
             maintainAspectRatio: true,
-            plugins: { legend: { labels: { color: '#94a3b8', font: { family: 'Inter' } } } },
+            plugins: { legend: { labels: { color: '#888888', font: { family: 'Inter' } } } },
             scales: {
-                x: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' } },
-                y: { ticks: { color: '#64748b' }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+                x: { ticks: { color: '#888888' }, grid: { color: 'rgba(255,255,255,0.04)' } },
+                y: { ticks: { color: '#888888' }, grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
             }
         };
     }
@@ -151,8 +151,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 datasets: [{
                     label: 'Leads',
                     data,
-                    backgroundColor: 'rgba(99,102,241,0.6)',
-                    borderColor: '#6366f1',
+                    backgroundColor: 'rgba(201, 168, 76, 0.5)',
+                    borderColor: '#c9a84c',
                     borderWidth: 1,
                     borderRadius: 6
                 }]
@@ -171,7 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 labels: ['Captured', 'Hot (8+)', 'Contacted', 'Booked'],
                 datasets: [{
                     data: [funnel.captured || 0, funnel.hot || 0, funnel.contacted || 0, funnel.booked || 0],
-                    backgroundColor: ['#6366f1', '#f97316', '#3b82f6', '#10b981'],
+                    backgroundColor: ['#c9a84c', '#f59e0b', '#4f8ef7', '#34d399'],
                     borderRadius: 6
                 }]
             },
@@ -194,14 +194,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 labels: ['Contacted', 'Missed'],
                 datasets: [{
                     data: total ? [contacted, missed] : [1, 0],
-                    backgroundColor: ['#10b981', '#ef4444'],
+                    backgroundColor: ['#34d399', '#ef4444'],
                     borderWidth: 0
                 }]
             },
             options: {
                 responsive: true,
                 plugins: {
-                    legend: { position: 'bottom', labels: { color: '#94a3b8' } }
+                    legend: { position: 'bottom', labels: { color: '#888888' } }
                 }
             }
         });

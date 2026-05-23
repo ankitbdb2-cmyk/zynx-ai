@@ -12,16 +12,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const widgetHtml = `
         <div id="ghost-widget">
-            <button class="ghost-toggle" id="ghost-toggle">
+            <button class="ghost-toggle pulse-gold" id="ghost-toggle" aria-label="Open chat">
                 <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
             </button>
             <div class="ghost-chat-window" id="ghost-chat-window">
                 <div class="ghost-header">
                     <div class="ghost-header-info">
-                        <div class="ghost-avatar">S</div>
+                        <span class="ghost-status-dot"></span>
                         <div class="ghost-name-wrap">
-                            <h3 class="ghost-name">Sarah</h3>
-                            <p class="ghost-status">Online</p>
+                            <h3 class="ghost-name">Sarah — PropMind AI</h3>
+                            <p class="ghost-subtitle">Online now</p>
                         </div>
                     </div>
                     <button class="ghost-close" id="ghost-close">×</button>

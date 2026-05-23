@@ -3,140 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Real Estate AI Platform</title>
-    <meta name="description" content="Your digital agent who never sleeps, never misses a lead, and never replies late.">
+    <title>PropMind — Never Lose Another Lead</title>
+    <meta name="description" content="AI-powered real estate lead capture and qualification for Dubai agencies.">
     <link rel="stylesheet" href="/css/design-system.css">
     <link rel="stylesheet" href="/css/home.css">
     <link rel="stylesheet" href="/css/ghost.css">
 </head>
-<body class="pm">
+<body class="hp-page">
 
-    <div class="pm-mesh">
-        <div class="pm-mesh-grid"></div>
-        <div class="pm-orb pm-orb-1"></div>
-        <div class="pm-orb pm-orb-2"></div>
-        <div class="pm-orb pm-orb-3"></div>
-        <div class="pm-particles"></div>
-    </div>
+    <nav class="hp-nav" id="hp-nav">
+        <a href="/" class="pm-brand">
+            PropMind<span class="pm-brand-dot"></span>
+        </a>
+        <div class="hp-nav-links">
+            <a href="#features">Features</a>
+            <a href="/admin.html">Dashboard</a>
+            <a href="/closer.html">Closer</a>
+        </div>
+        <div class="hp-nav-cta">
+            <a href="/admin.html" class="btn btn-ghost">Sign In</a>
+            <button type="button" class="btn btn-primary" id="open-chat-nav">Talk to Sarah</button>
+        </div>
+    </nav>
 
-    <div class="pm-content">
-        <nav class="pm-nav" id="pm-nav">
-            <a href="/" class="pm-logo">
-                <span class="pm-logo-mark">P</span>
-                <span class="pm-logo-text">PropMind</span>
-            </a>
-            <div class="pm-nav-links">
-                <a href="#features">Features</a>
-                <a href="#platform">Platform</a>
-                <a href="/admin.html">Dashboard</a>
+    <section class="hp-hero anim-in">
+        <h1>Never Lose Another Lead</h1>
+        <p class="hp-hero-sub" id="hero-sub">
+            <span id="agency-title">{{AGENCY_NAME}}</span> — AI qualification, hot-score routing, and automatic viewing scheduling. 24/7.
+        </p>
+        <div class="hp-accent-line"></div>
+
+        <div class="hp-metrics">
+            <div class="hp-metric-card glass anim-in" style="--delay:0.1s">
+                <div class="hp-metric-val">100%</div>
+                <div class="hp-metric-label">Leads Captured</div>
             </div>
-            <div class="pm-nav-cta">
-                <a href="/closer.html" class="btn btn-ghost">Agent Tools</a>
-                <a href="/admin.html" class="btn btn-primary">Get Started</a>
+            <div class="hp-metric-card glass anim-in" style="--delay:0.15s">
+                <div class="hp-metric-val">1–10</div>
+                <div class="hp-metric-label">Hot Score System</div>
             </div>
-        </nav>
+            <div class="hp-metric-card glass anim-in" style="--delay:0.2s">
+                <div class="hp-metric-val">Auto</div>
+                <div class="hp-metric-label">Viewing Scheduling</div>
+            </div>
+        </div>
 
-        <main>
-            <section class="pm-hero anim-in">
-                <div class="badge">
-                    <span class="badge-dot"></span>
-                    Sarah AI · Online 24/7
-                </div>
+        <div class="hp-cta-row anim-in" style="--delay:0.25s">
+            <button type="button" class="btn btn-primary" id="open-chat-btn">Talk to Sarah</button>
+            <a href="/admin.html" class="btn btn-ghost">Admin Dashboard</a>
+        </div>
+    </section>
 
-                <h1 class="display-xl">
-                    <span class="text-gradient" id="agency-title">{{AGENCY_NAME}}</span>
-                </h1>
+    <section class="hp-features-section" id="features">
+        <p class="section-header anim-in">Platform</p>
+        <h2 class="page-title anim-in" style="text-align:center;margin-bottom:0.5rem;--delay:0.05s">Built for elite agencies</h2>
+        <p class="hp-hero-sub anim-in" style="margin:0 auto 2.5rem;--delay:0.08s">Dark, precise, premium — Bloomberg Terminal meets luxury real estate.</p>
 
-                <p class="pm-subtitle anim-in" style="--delay:0.1s">
-                    Your digital agent who <strong>never sleeps</strong>, <strong>never misses a lead</strong>, and <strong>never replies late</strong> — built for <strong>{{AGENCY_NAME}}</strong>.
-                </p>
+        <div class="hp-features-grid">
+            <article class="hp-feature-card glass anim-in" style="--delay:0.1s">
+                <h3>Sarah AI Agent</h3>
+                <p>Qualifies every visitor in seconds. Budget, area, timeline — scored automatically.</p>
+            </article>
+            <article class="hp-feature-card glass anim-in" style="--delay:0.12s">
+                <h3>Hot Lead Scheduler</h3>
+                <p>Score 8+ triggers three viewing slots. Lead replies 1, 2, or 3 — done.</p>
+            </article>
+            <article class="hp-feature-card glass anim-in" style="--delay:0.14s">
+                <h3>Weekly Analytics</h3>
+                <p>Conversion funnels, hot follow-up, commission attribution — visual command center.</p>
+            </article>
+            <article class="hp-feature-card glass anim-in" style="--delay:0.16s">
+                <h3>Smart Listing Paste</h3>
+                <p>Paste Property Finder text. AI extracts every listing — zero manual entry.</p>
+            </article>
+            <article class="hp-feature-card glass anim-in" style="--delay:0.18s">
+                <h3>Closer Co-Pilot</h3>
+                <p>Exact words, psychology, tactics, and danger signals for every objection.</p>
+            </article>
+            <article class="hp-feature-card glass anim-in" style="--delay:0.2s">
+                <h3>Permanent Data</h3>
+                <p>Listings and leads survive every redeploy on persistent storage.</p>
+            </article>
+        </div>
+    </section>
 
-                <div class="pm-cta-row anim-in" style="--delay:0.2s">
-                    <button type="button" class="btn btn-primary" id="open-chat-btn">Talk to Sarah</button>
-                    <a href="/admin.html" class="btn btn-ghost">Admin Dashboard</a>
-                </div>
-            </section>
-
-            <section class="pm-preview anim-in" id="platform" style="--delay:0.3s">
-                <div class="pm-preview-inner">
-                    <div class="pm-preview-body glass">
-                        <div>
-                            <div class="pm-stat-val">&lt;3s</div>
-                            <div class="pm-stat-label">Response Time</div>
-                        </div>
-                        <div>
-                            <div class="pm-stat-val">100%</div>
-                            <div class="pm-stat-label">Leads Captured</div>
-                        </div>
-                        <div>
-                            <div class="pm-stat-val text-gradient-gold" style="-webkit-text-fill-color:unset;background:none;color:var(--gold)">2×</div>
-                            <div class="pm-stat-label">Conversion Lift</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="pm-section" id="features">
-                <div class="pm-section-label anim-in">Platform</div>
-                <h2 class="pm-section-title anim-in" style="--delay:0.05s">Built for agencies that refuse to lose leads</h2>
-                <div class="pm-features">
-                    <article class="pm-feature glass anim-in" style="--delay:0.1s">
-                        <div class="pm-feature-icon">⚡</div>
-                        <h3>Instant Qualification</h3>
-                        <p>Sarah scores every lead 1–10 and captures budget, area, and timeline automatically.</p>
-                    </article>
-                    <article class="pm-feature glass anim-in" style="--delay:0.15s">
-                        <div class="pm-feature-icon">📅</div>
-                        <h3>Auto Viewing Scheduler</h3>
-                        <p>Hot leads get 3 slots instantly. One reply confirms the viewing for both parties.</p>
-                    </article>
-                    <article class="pm-feature glass anim-in" style="--delay:0.2s">
-                        <div class="pm-feature-icon">📋</div>
-                        <h3>Smart Listing Paste</h3>
-                        <p>Paste Property Finder text — AI extracts every listing. No manual data entry.</p>
-                    </article>
-                    <article class="pm-feature glass anim-in" style="--delay:0.25s">
-                        <div class="pm-feature-icon">📊</div>
-                        <h3>Weekly Analytics</h3>
-                        <p>Conversion funnels, hot lead follow-up, and commission attribution in one dashboard.</p>
-                    </article>
-                    <article class="pm-feature glass anim-in" style="--delay:0.3s">
-                        <div class="pm-feature-icon">🔒</div>
-                        <h3>Permanent Data</h3>
-                        <p>Listings and leads persist on Render's disk — survive every redeploy and spin-down.</p>
-                    </article>
-                    <article class="pm-feature glass anim-in" style="--delay:0.35s">
-                        <div class="pm-feature-icon">🌍</div>
-                        <h3>Arabic & English</h3>
-                        <p>Matches the lead's language naturally. Dubai-ready from day one.</p>
-                    </article>
-                </div>
-            </section>
-
-            <section class="glass pm-cta-band anim-in" style="--delay:0.2s">
-                <h2 class="pm-section-title" style="margin-bottom:1rem">Never miss a lead again</h2>
-                <p class="pm-subtitle" style="margin-bottom:1.5rem">Sarah is live — start a conversation now.</p>
-                <button type="button" class="btn btn-primary" id="open-chat-btn-2">Start a Conversation</button>
-            </section>
-        </main>
-
-        <footer class="pm-footer">Powered by PropMind AI · Elite real estate intelligence</footer>
-    </div>
+    <footer class="hp-footer">© PropMind · Elite real estate intelligence</footer>
 
     <div id="ghost-widget-container"></div>
 
     <script>
-        const agencyName = document.getElementById('agency-title').textContent.trim();
-        if (agencyName) document.title = agencyName + ' — AI Real Estate Platform';
-        document.getElementById('pm-nav').classList.toggle('scrolled', false);
+        const agency = document.getElementById('agency-title')?.textContent.trim();
+        if (agency) document.title = agency + ' — PropMind';
         window.addEventListener('scroll', () => {
-            document.getElementById('pm-nav').classList.toggle('scrolled', window.scrollY > 20);
+            document.getElementById('hp-nav')?.classList.toggle('scrolled', window.scrollY > 20);
         });
-        function openChat() {
-            document.getElementById('ghost-toggle')?.click();
-        }
-        document.getElementById('open-chat-btn')?.addEventListener('click', openChat);
-        document.getElementById('open-chat-btn-2')?.addEventListener('click', openChat);
+        function openChat() { document.getElementById('ghost-toggle')?.click(); }
+        ['open-chat-btn', 'open-chat-nav'].forEach(id => {
+            document.getElementById(id)?.addEventListener('click', openChat);
+        });
     </script>
     <script src="/js/ghost.js"></script>
 </body>
