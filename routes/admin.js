@@ -1,9 +1,38 @@
 const express = require('express');
 const router = express.Router();
-const Anthropic = require('@anthropic-ai/sdk');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const db = require('../database');
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const PARSE_LISTINGS_PROMPT = `You extract Dubai real estate listings from unstructured paste text (Property Finder, Bayut, emails, WhatsApp, etc.).
+Return ONLY valid JSON — no markdown, no explanation:
+{
+  "listings": [
+    {
+      "type": "Rent" or "Sale",
+      "title": "e.g. Studio Apartment, 1BR Villa",
+      "area": "Dubai area/neighborhood",
+      "price": "e.g. AED 65,000/yr or AED 950,000",
+      "bedrooms": "Studio, 1BR, 2BR, etc.",
+      "description": "key features in one line"
+    }
+  ]
+}
+Rules:
+- Extract every distinct property mentioned.
+- type must be exactly "Rent" or "Sale".
+- If rent vs sale unclear, infer from price format (/yr = Rent).
+- Never invent properties not in the text.
+- If a field is missing, use best guess from context or "—".`;
+
+async function parseListingsWithGemini(rawText) {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({
+        model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+        generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+    });
+    const result = await model.generateContent(`${PARSE_LISTINGS_PROMPT}\n\n---\nPASTED TEXT:\n${rawText}`);
+    return result.response.text();
+}
 
 router.post('/login', (req, res) => {
     const { username, password } = req.body;
@@ -228,39 +257,12 @@ router.post('/properties/parse-paste', async (req, res) => {
     if (!rawText || !String(rawText).trim()) {
         return res.status(400).json({ error: 'rawText required' });
     }
-    if (!process.env.ANTHROPIC_API_KEY) {
-        return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
+    if (!process.env.GEMINI_API_KEY) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY not configured. Get a free key at https://aistudio.google.com/apikey' });
     }
 
     try {
-        const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-5',
-            max_tokens: 4000,
-            temperature: 0.2,
-            system: `You extract Dubai real estate listings from unstructured paste text (Property Finder, Bayut, emails, WhatsApp, etc.).
-Return ONLY valid JSON — no markdown, no explanation:
-{
-  "listings": [
-    {
-      "type": "Rent" or "Sale",
-      "title": "e.g. Studio Apartment, 1BR Villa",
-      "area": "Dubai area/neighborhood",
-      "price": "e.g. AED 65,000/yr or AED 950,000",
-      "bedrooms": "Studio, 1BR, 2BR, etc.",
-      "description": "key features in one line"
-    }
-  ]
-}
-Rules:
-- Extract every distinct property mentioned.
-- type must be exactly "Rent" or "Sale".
-- If rent vs sale unclear, infer from price format (/yr = Rent).
-- Never invent properties not in the text.
-- If a field is missing, use best guess from context or "—".`,
-            messages: [{ role: 'user', content: String(rawText).trim() }]
-        });
-
-        const text = response.content[0].text.trim();
+        const text = (await parseListingsWithGemini(String(rawText).trim())).trim();
         const jsonStart = text.indexOf('{');
         const jsonEnd = text.lastIndexOf('}');
         if (jsonStart === -1 || jsonEnd === -1) {

@@ -1,107 +1,230 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PropMind — Never Lose Another Lead</title>
-    <meta name="description" content="AI-powered real estate lead capture and qualification for Dubai agencies.">
-    <link rel="stylesheet" href="/css/design-system.css">
-    <link rel="stylesheet" href="/css/home.css">
-    <link rel="stylesheet" href="/css/ghost.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{AGENCY_NAME}} — PropMind Real Estate AI</title>
+  <meta name="description" content="The ultimate AI-powered operating system for elite real estate agencies. Never lose another lead.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/ghost.css">
+  <style>
+    .home-nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.25rem 3rem;
+      background: rgba(5, 5, 8, 0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-links { display: flex; align-items: center; gap: 1rem; }
+
+    /* Agency Name Banner */
+    .agency-banner {
+      padding-top: 6rem;
+      text-align: center;
+    }
+    .agency-name {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      color: var(--accent);
+      text-shadow: 0 0 30px rgba(0, 245, 255, 0.25);
+      margin-bottom: 0.5rem;
+    }
+    .agency-glow {
+      width: 120px; height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      margin: 0 auto;
+      box-shadow: 0 0 12px rgba(0, 245, 255, 0.3);
+    }
+
+    /* Hero */
+    .hero {
+      min-height: calc(100vh - 6rem);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 4rem 2rem; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; top: -25%; left: 50%; transform: translateX(-50%);
+      width: 900px; height: 900px;
+      background: radial-gradient(ellipse, rgba(0,245,255,0.04) 0%, rgba(123,47,255,0.02) 40%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-eyebrow {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: var(--accent-dim); border: 1px solid rgba(0,245,255,0.2);
+      border-radius: 30px; padding: 0.35rem 1rem; font-size: 12px; font-weight: 600;
+      color: var(--accent); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 2rem;
+    }
+    .hero-eyebrow span { width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+    .hero h1 {
+      font-size: clamp(48px, 7vw, 80px); font-weight: 900; color: var(--text);
+      letter-spacing: -0.04em; line-height: 1.05; margin-bottom: 1.5rem; max-width: 800px;
+    }
+    .hero h1 .accent {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .cyan-line {
+      width: 80px; height: 3px;
+      background: linear-gradient(90deg, var(--accent2), var(--accent), var(--accent2));
+      border-radius: 2px; margin: 0 auto 1.5rem;
+      box-shadow: 0 0 16px rgba(0,245,255,0.3);
+    }
+    .hero-sub {
+      font-size: 18px; color: var(--text-muted); max-width: 520px;
+      line-height: 1.7; margin-bottom: 2.5rem;
+    }
+    .hero-cta { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+
+    /* Metrics */
+    .metrics {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.25rem;
+      max-width: 900px; width: 100%; margin: 4rem auto 0; padding: 0 2rem;
+    }
+    @media (max-width: 768px) { .metrics { grid-template-columns: 1fr; } }
+    .metric-card {
+      background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+      border-top: 1px solid rgba(0,245,255,0.15);
+      border-radius: var(--radius-lg); backdrop-filter: blur(20px);
+      padding: 1.75rem; text-align: left; transition: all var(--transition);
+      position: relative; overflow: hidden;
+    }
+    .metric-card:hover {
+      border-color: rgba(0,245,255,0.3);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 30px rgba(123,47,255,0.1);
+      transform: translateY(-2px);
+    }
+    .metric-icon {
+      width: 42px; height: 42px; background: var(--accent-dim);
+      border: 1px solid rgba(0,245,255,0.2); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px; margin-bottom: 1rem;
+    }
+    .metric-card h3 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 0.4rem; }
+    .metric-card p { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
+
+    /* Features */
+    .section { padding: 6rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .section-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.12em; color: var(--accent); margin-bottom: 1rem;
+    }
+    .section-title {
+      font-size: clamp(30px, 4vw, 44px); font-weight: 800; color: var(--text);
+      letter-spacing: -0.03em; margin-bottom: 1rem; max-width: 600px;
+    }
+    .section-sub { font-size: 16px; color: var(--text-muted); max-width: 500px; line-height: 1.7; margin-bottom: 3rem; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem; }
+    .feature-card {
+      background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+      border-radius: var(--radius-lg); padding: 1.75rem; transition: all var(--transition);
+    }
+    .feature-card:hover {
+      background: rgba(255,255,255,0.04); border-color: rgba(0,245,255,0.2);
+      box-shadow: 0 8px 30px rgba(123,47,255,0.08);
+    }
+    .feature-card .feature-icon { font-size: 26px; margin-bottom: 1rem; }
+    .feature-card h4 { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
+    .feature-card p { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+
+    .home-footer {
+      border-top: 1px solid var(--border); padding: 2rem 3rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .home-footer p { font-size: 12px; color: var(--text-dim); }
+  </style>
 </head>
-<body class="hp-page">
+<body>
+  <nav class="home-nav">
+    <div class="logo">PropMind<span class="logo-dot">.</span></div>
+    <div class="nav-links">
+      <a href="/closer.html" class="btn btn-outline">Agent Tools</a>
+      <a href="/admin.html" class="btn btn-primary">Dashboard</a>
+    </div>
+  </nav>
 
-    <nav class="hp-nav" id="hp-nav">
-        <a href="/" class="pm-brand">
-            PropMind<span class="pm-brand-dot"></span>
-        </a>
-        <div class="hp-nav-links">
-            <a href="#features">Features</a>
-            <a href="/admin.html">Dashboard</a>
-            <a href="/closer.html">Closer</a>
-        </div>
-        <div class="hp-nav-cta">
-            <a href="/admin.html" class="btn btn-ghost">Sign In</a>
-            <button type="button" class="btn btn-primary" id="open-chat-nav">Talk to Sarah</button>
-        </div>
-    </nav>
+  <div class="agency-banner">
+    <div class="agency-name">{{AGENCY_NAME}}</div>
+    <div class="agency-glow"></div>
+  </div>
 
-    <section class="hp-hero anim-in">
-        <h1>Never Lose Another Lead</h1>
-        <p class="hp-hero-sub" id="hero-sub">
-            <span id="agency-title">{{AGENCY_NAME}}</span> — AI qualification, hot-score routing, and automatic viewing scheduling. 24/7.
-        </p>
-        <div class="hp-accent-line"></div>
+  <section class="hero">
+    <div class="hero-eyebrow"><span></span> AI-Powered Real Estate OS</div>
+    <h1>Never Lose<br>Another <span class="accent">Lead</span></h1>
+    <div class="cyan-line"></div>
+    <p class="hero-sub">The complete AI operating system for elite real estate agencies. Convert browsers into buyers — automatically.</p>
+    <div class="hero-cta">
+      <a href="/admin.html" class="btn btn-primary" style="padding:0.85rem 2rem; font-size:15px;">View Dashboard</a>
+      <a href="/closer.html" class="btn btn-outline" style="padding:0.85rem 2rem; font-size:15px;">Agent Tools →</a>
+    </div>
+  </section>
 
-        <div class="hp-metrics">
-            <div class="hp-metric-card glass anim-in" style="--delay:0.1s">
-                <div class="hp-metric-val">100%</div>
-                <div class="hp-metric-label">Leads Captured</div>
-            </div>
-            <div class="hp-metric-card glass anim-in" style="--delay:0.15s">
-                <div class="hp-metric-val">1–10</div>
-                <div class="hp-metric-label">Hot Score System</div>
-            </div>
-            <div class="hp-metric-card glass anim-in" style="--delay:0.2s">
-                <div class="hp-metric-val">Auto</div>
-                <div class="hp-metric-label">Viewing Scheduling</div>
-            </div>
-        </div>
+  <div class="metrics">
+    <div class="metric-card">
+      <div class="metric-icon">⚡</div>
+      <h3>Leads Captured 24/7</h3>
+      <p>GHOST AI works around the clock, qualifying buyers and logging every detail while you sleep.</p>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">🧠</div>
+      <h3>Psychology Scoring</h3>
+      <p>Every lead is tagged URGENT, EXCITED, HESITANT, or PRICE SENSITIVE — automatically.</p>
+    </div>
+    <div class="metric-card">
+      <div class="metric-icon">📅</div>
+      <h3>Auto Scheduling</h3>
+      <p>Site visits get booked directly in the conversation. Your calendar fills itself.</p>
+    </div>
+  </div>
 
-        <div class="hp-cta-row anim-in" style="--delay:0.25s">
-            <button type="button" class="btn btn-primary" id="open-chat-btn">Talk to Sarah</button>
-            <a href="/admin.html" class="btn btn-ghost">Admin Dashboard</a>
-        </div>
-    </section>
+  <div class="section">
+    <div class="section-label">Platform Features</div>
+    <h2 class="section-title">Two tools. One unfair advantage.</h2>
+    <p class="section-sub">GHOST handles inbound. CLOSER handles the negotiation. Together, they close more deals.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">👻</div>
+        <h4>GHOST — AI Chat Widget</h4>
+        <p>Embed on any website. Responds as "Sarah," your human-sounding sales agent. Captures name, phone, budget, and visit time without ever breaking character.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎯</div>
+        <h4>Psychology Detection</h4>
+        <p>GHOST reads buyer signals in real-time — urgency, hesitation, excitement — and adapts its tone and strategy accordingly.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🤝</div>
+        <h4>CLOSER — Negotiation Co-Pilot</h4>
+        <p>Open on your phone mid-meeting. Type what the buyer says, get the exact words to reply, tactics to use, and danger signals to watch for.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🚨</div>
+        <h4>CLOSE NOW Emergency Button</h4>
+        <p>One tap generates the highest-conversion closing script for your exact situation. When a deal is slipping, this is your lifeline.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <h4>Admin Dashboard</h4>
+        <p>Track every lead, update statuses, and monitor conversion rates. Dark, precise, and built for speed.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✉️</div>
+        <h4>Instant Email Alerts</h4>
+        <p>The moment a lead is captured, you get a professional email with full details and AI psychology notes.</p>
+      </div>
+    </div>
+  </div>
 
-    <section class="hp-features-section" id="features">
-        <p class="section-header anim-in">Platform</p>
-        <h2 class="page-title anim-in" style="text-align:center;margin-bottom:0.5rem;--delay:0.05s">Built for elite agencies</h2>
-        <p class="hp-hero-sub anim-in" style="margin:0 auto 2.5rem;--delay:0.08s">Dark, precise, premium — Bloomberg Terminal meets luxury real estate.</p>
+  <footer class="home-footer">
+    <div class="logo" style="font-size:16px;">PropMind<span class="logo-dot">.</span></div>
+    <p>© 2025 PropMind. All rights reserved.</p>
+  </footer>
 
-        <div class="hp-features-grid">
-            <article class="hp-feature-card glass anim-in" style="--delay:0.1s">
-                <h3>Sarah AI Agent</h3>
-                <p>Qualifies every visitor in seconds. Budget, area, timeline — scored automatically.</p>
-            </article>
-            <article class="hp-feature-card glass anim-in" style="--delay:0.12s">
-                <h3>Hot Lead Scheduler</h3>
-                <p>Score 8+ triggers three viewing slots. Lead replies 1, 2, or 3 — done.</p>
-            </article>
-            <article class="hp-feature-card glass anim-in" style="--delay:0.14s">
-                <h3>Weekly Analytics</h3>
-                <p>Conversion funnels, hot follow-up, commission attribution — visual command center.</p>
-            </article>
-            <article class="hp-feature-card glass anim-in" style="--delay:0.16s">
-                <h3>Smart Listing Paste</h3>
-                <p>Paste Property Finder text. AI extracts every listing — zero manual entry.</p>
-            </article>
-            <article class="hp-feature-card glass anim-in" style="--delay:0.18s">
-                <h3>Closer Co-Pilot</h3>
-                <p>Exact words, psychology, tactics, and danger signals for every objection.</p>
-            </article>
-            <article class="hp-feature-card glass anim-in" style="--delay:0.2s">
-                <h3>Permanent Data</h3>
-                <p>Listings and leads survive every redeploy on persistent storage.</p>
-            </article>
-        </div>
-    </section>
-
-    <footer class="hp-footer">© PropMind · Elite real estate intelligence</footer>
-
-    <div id="ghost-widget-container"></div>
-
-    <script>
-        const agency = document.getElementById('agency-title')?.textContent.trim();
-        if (agency) document.title = agency + ' — PropMind';
-        window.addEventListener('scroll', () => {
-            document.getElementById('hp-nav')?.classList.toggle('scrolled', window.scrollY > 20);
-        });
-        function openChat() { document.getElementById('ghost-toggle')?.click(); }
-        ['open-chat-btn', 'open-chat-nav'].forEach(id => {
-            document.getElementById(id)?.addEventListener('click', openChat);
-        });
-    </script>
-    <script src="/js/ghost.js"></script>
+  <div id="ghost-widget-container"></div>
+  <script src="/js/ghost.js"></script>
 </body>
 </html>

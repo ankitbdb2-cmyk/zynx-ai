@@ -1,327 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PropMind Command — Admin</title>
-    <meta name="description" content="PropMind AI — Admin Command Centre">
-    <link rel="stylesheet" href="/css/design-system.css">
-    <link rel="stylesheet" href="/css/admin.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PropMind — Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/admin.css">
 </head>
-<body class="admin-bg">
+<body>
 
-    <div id="login-screen" class="login-wrapper">
-        <div class="login-card anim-in">
-            <div class="login-title"><span class="pm-brand" style="justify-content:center">PropMind<span class="pm-brand-dot"></span></span></div>
-            <div class="login-subtitle">Command Center</div>
-            <form id="login-form">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" class="form-control" placeholder="admin" required autocomplete="username">
-                </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" class="form-control" placeholder="••••••••" required autocomplete="current-password">
-                </div>
-                <button type="submit" id="login-btn" class="btn btn-primary w-full">Sign In</button>
-            </form>
+  <!-- ─── Login Screen ─────────────────────────── -->
+  <div id="login-screen" class="login-wrapper">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="logo">PropMind<span class="logo-dot">.</span></div>
+        <p>Agency Admin Portal</p>
+      </div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" class="input" required placeholder="Enter username" autocomplete="username">
         </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" class="input" required placeholder="Enter password" autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary w-full" style="padding:0.85rem; font-size:15px; margin-top:0.5rem;">
+          Sign In
+        </button>
+      </form>
+      <p style="text-align:center; margin-top:1.5rem; font-size:12px; color:var(--text-dim);">
+        PropMind Admin v1.0 — Secured Access
+      </p>
     </div>
+  </div>
 
-    <div id="dashboard-screen" class="hidden dashboard-wrapper">
+  <!-- ─── Dashboard Screen ──────────────────────── -->
+  <div id="dashboard-screen" class="hidden admin-layout">
 
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <span class="pm-brand">PropMind<span class="pm-brand-dot"></span></span>
-                <div class="sidebar-brand-sub" style="margin-top:0.35rem">Command</div>
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo">PropMind<span class="logo-dot">.</span></div>
+        <div class="sidebar-tag">Admin</div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" id="nav-leads">
+          <span class="nav-item-icon">📋</span> Leads
+        </a>
+        <a href="/closer.html" class="nav-item">
+          <span class="nav-item-icon">🎯</span> Closer Tool
+        </a>
+        <a href="/" class="nav-item">
+          <span class="nav-item-icon">🌐</span> Live Site
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button id="logout-btn" class="btn btn-outline w-full" style="font-size:13px; padding:0.6rem;">
+          Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+
+      <!-- Top Bar -->
+      <header class="dashboard-header">
+        <div class="dashboard-header-left">
+          <h2>Leads Dashboard</h2>
+          <p id="last-updated">Loading...</p>
+        </div>
+        <div class="dashboard-header-right">
+          <button id="refresh-btn" class="btn btn-surface" style="font-size:13px;">
+            ↻ Refresh
+          </button>
+        </div>
+      </header>
+
+      <!-- Content -->
+      <div class="dashboard-content">
+
+        <!-- Stats -->
+        <div class="stats-grid">
+          <div class="stat-card cyan">
+            <div class="stat-label">Total Leads (7 days)</div>
+            <div class="stat-value" id="stat-total">—</div>
+            <div class="stat-sub">Captured by GHOST</div>
+          </div>
+          <div class="stat-card red">
+            <div class="stat-label">Hot / Urgent Leads</div>
+            <div class="stat-value" id="stat-hot">—</div>
+            <div class="stat-sub">Needs immediate follow-up</div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-label">Conversion Rate</div>
+            <div class="stat-value" id="stat-conv">—%</div>
+            <div class="stat-sub">Leads closed this week</div>
+          </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+          <div class="table-header">
+            <div>
+              <h3>All Leads</h3>
+              <p>Captured from GHOST AI chat widget</p>
             </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="leads-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Name</th>
+                  <th>Contact</th>
+                  <th>Budget</th>
+                  <th>Psychology Notes</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="leads-tbody">
+                <tr>
+                  <td colspan="6" class="empty-state">Loading leads...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
-            <nav class="sidebar-nav">
-                <button class="nav-item active" data-view="analytics" id="nav-analytics">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-                    Analytics
-                </button>
-                <button class="nav-item" data-view="scheduler" id="nav-scheduler">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                    Scheduler
-                </button>
-                <button class="nav-item" data-view="leads" id="nav-leads">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
-                    Leads
-                </button>
-                <button class="nav-item" data-view="properties" id="nav-properties">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-                    Properties
-                </button>
-                <div class="nav-divider"></div>
-                <a href="/closer.html" class="nav-item">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                    Closer Tool
-                </a>
-                <a href="/" class="nav-item">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
-                    Live Site
-                </a>
-            </nav>
+      </div><!-- /dashboard-content -->
+    </main>
+  </div><!-- /admin-layout -->
 
-            <div class="sidebar-footer">
-                <button id="logout-btn" class="nav-item" style="color:var(--text-muted);width:100%">
-                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/></svg>
-                    Logout
-                </button>
-            </div>
-        </aside>
-
-        <main class="dashboard-main">
-
-            <!-- ANALYTICS -->
-            <div id="analytics-view" class="view-panel">
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title">Weekly Analytics</h1>
-                        <p class="page-subtitle">Performance report · last 7 days</p>
-                    </div>
-                    <button id="refresh-analytics" class="btn btn-outline btn-sm">Refresh</button>
-                </div>
-
-                <div class="analytics-kpi-grid">
-                    <div class="kpi-card anim-in" style="--delay:0">
-                        <div class="kpi-label">Leads Captured</div>
-                        <div class="kpi-value" id="kpi-leads">—</div>
-                    </div>
-                    <div class="kpi-card anim-in" style="--delay:0.05s">
-                        <div class="kpi-label">Viewing Conversion</div>
-                        <div class="kpi-value accent-green" id="kpi-conversion">—%</div>
-                    </div>
-                    <div class="kpi-card anim-in" style="--delay:0.1s">
-                        <div class="kpi-label">Hot Contacted</div>
-                        <div class="kpi-value accent-blue" id="kpi-contacted">—</div>
-                    </div>
-                    <div class="kpi-card anim-in" style="--delay:0.15s">
-                        <div class="kpi-label">Hot Missed</div>
-                        <div class="kpi-value accent-red" id="kpi-missed">—</div>
-                    </div>
-                </div>
-
-                <div class="charts-row">
-                    <div class="chart-card anim-in" style="--delay:0.2s">
-                        <div class="chart-card-title">Leads This Week</div>
-                        <canvas id="chart-leads-daily" height="200"></canvas>
-                    </div>
-                    <div class="chart-card anim-in" style="--delay:0.25s">
-                        <div class="chart-card-title">Conversion Funnel</div>
-                        <canvas id="chart-funnel" height="200"></canvas>
-                    </div>
-                </div>
-
-                <div class="charts-row">
-                    <div class="chart-card anim-in" style="--delay:0.3s">
-                        <div class="chart-card-title">Hot Lead Follow-up</div>
-                        <canvas id="chart-hot-pie" height="180"></canvas>
-                    </div>
-                    <div class="chart-card commission-card anim-in" style="--delay:0.35s">
-                        <div class="chart-card-title">Revenue Attribution</div>
-                        <p class="commission-desc">Commission earned from Sarah-captured leads this week (AED)</p>
-                        <div class="commission-input-row">
-                            <span class="commission-currency">AED</span>
-                            <input type="number" id="commission-input" class="form-control commission-field" placeholder="0" min="0" step="100">
-                            <button id="save-commission-btn" class="btn btn-gold btn-sm">Save</button>
-                        </div>
-                        <span id="commission-feedback" class="agency-save-feedback">✓ Saved</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SCHEDULER -->
-            <div id="scheduler-view" class="view-panel hidden">
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title">Viewing Scheduler</h1>
-                        <p class="page-subtitle">Sarah auto-offers 3 slots when a lead scores 8+</p>
-                    </div>
-                </div>
-
-                <div class="scheduler-grid">
-                    <div class="section scheduler-form-section">
-                        <div class="section-header">
-                            <div class="section-title">Add Availability</div>
-                        </div>
-                        <form id="slot-form" class="slot-form">
-                            <div class="form-group">
-                                <label>Date & Time</label>
-                                <input type="datetime-local" id="slot-datetime" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Label (optional)</label>
-                                <input type="text" id="slot-label" class="form-control" placeholder="e.g. Marina Tower viewing">
-                            </div>
-                            <button type="submit" class="btn btn-primary w-full">Add Slot</button>
-                        </form>
-                        <p class="scheduler-hint">Keep at least 3 future slots open — hot leads receive them automatically.</p>
-                    </div>
-
-                    <div class="section">
-                        <div class="section-header">
-                            <div class="section-title">Your Calendar</div>
-                            <span class="slot-count-badge" id="slot-count">0 open</span>
-                        </div>
-                        <div id="slots-list" class="slots-list"></div>
-                    </div>
-                </div>
-
-                <div class="section" style="padding-top:0">
-                    <div class="section-header">
-                        <div class="section-title">Confirmed Viewings</div>
-                    </div>
-                    <div class="table-wrap">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Lead</th>
-                                    <th>Phone</th>
-                                    <th>Area</th>
-                                    <th>Score</th>
-                                    <th>Viewing Time</th>
-                                </tr>
-                            </thead>
-                            <tbody id="viewings-tbody">
-                                <tr><td colspan="5" class="empty-state">No confirmed viewings yet</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- LEADS -->
-            <div id="leads-view" class="view-panel hidden">
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title">Lead Intelligence</h1>
-                        <p class="page-subtitle">Ranked by hot score — highest priority first</p>
-                    </div>
-                    <button id="refresh-btn" class="btn btn-outline btn-sm">Refresh</button>
-                </div>
-
-                <div class="agency-bar">
-                    <div class="agency-bar-label">
-                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-                        Agency Name
-                    </div>
-                    <input type="text" id="agency-name-input" placeholder="e.g. Sandcastle Properties">
-                    <button id="save-agency-btn" class="btn btn-gold btn-sm">Save</button>
-                    <span id="agency-save-feedback" class="agency-save-feedback">✓ Saved</span>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card stat-total">
-                        <div class="stat-icon">📊</div>
-                        <div class="stat-label">New This Week</div>
-                        <div class="stat-value" id="stat-total">—</div>
-                    </div>
-                    <div class="stat-card stat-hot">
-                        <div class="stat-icon">🔥</div>
-                        <div class="stat-label">Hot Leads</div>
-                        <div class="stat-value" id="stat-hot">—</div>
-                    </div>
-                    <div class="stat-card stat-conv">
-                        <div class="stat-icon">✅</div>
-                        <div class="stat-label">Viewings Booked</div>
-                        <div class="stat-value" id="stat-conv">—%</div>
-                    </div>
-                    <div class="stat-card stat-all">
-                        <div class="stat-icon">👥</div>
-                        <div class="stat-label">Total Leads</div>
-                        <div class="stat-value" id="stat-all">—</div>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <div class="section-header">
-                        <div class="section-title">All Leads</div>
-                    </div>
-                    <div class="table-wrap">
-                        <table class="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Score</th>
-                                    <th>Name</th>
-                                    <th>Phone</th>
-                                    <th>Budget</th>
-                                    <th>Area / Beds</th>
-                                    <th>Timeline</th>
-                                    <th>Viewing</th>
-                                    <th>Date</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="leads-tbody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- PROPERTIES -->
-            <div id="properties-view" class="view-panel hidden">
-                <div class="page-header">
-                    <div>
-                        <h1 class="page-title">Property Listings</h1>
-                        <p class="page-subtitle">Smart paste from Property Finder — AI organizes everything</p>
-                    </div>
-                    <span class="persistence-badge" id="persistence-badge" title="Database path">💾 Persistent storage</span>
-                </div>
-
-                <div class="smart-paste-panel glass">
-                    <div class="smart-paste-header">
-                        <div>
-                            <div class="smart-paste-title">✨ Smart Listing Paste</div>
-                            <p class="smart-paste-sub">Paste raw text from Property Finder, Bayut, or WhatsApp — any format. Gemini AI extracts title, area, price, bedrooms, type & description automatically (free tier).</p>
-                        </div>
-                    </div>
-                    <textarea id="paste-raw" class="form-control" placeholder="Paste your listings here...
-
-Example:
-Studio for rent Dubai Marina
-AED 65,000 per year
-Sea view, gym, pool
-1BR JVC sale 450k AED
-..."></textarea>
-                    <div class="smart-paste-actions">
-                        <button type="button" id="parse-paste-btn" class="btn btn-primary">Extract Listings with Gemini</button>
-                        <button type="button" id="clear-paste-btn" class="btn btn-ghost">Clear</button>
-                    </div>
-                    <div id="paste-loading" class="paste-loading hidden">
-                        <div class="paste-spinner"></div>
-                        <span>Gemini is organizing your listings…</span>
-                    </div>
-                    <div id="paste-preview" class="hidden">
-                        <div class="section-header" style="margin-top:1.25rem">
-                            <div class="section-title">Preview — confirm before saving</div>
-                            <span id="paste-count" class="slot-count-badge"></span>
-                        </div>
-                        <div id="paste-preview-grid" class="paste-preview-grid"></div>
-                        <div class="smart-paste-actions">
-                            <button type="button" id="confirm-paste-btn" class="btn btn-gold">Save All Listings</button>
-                            <button type="button" id="cancel-paste-btn" class="btn btn-ghost">Discard</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <div class="section-header">
-                        <div class="section-title">Active Listings</div>
-                    </div>
-                    <div id="property-grid" class="property-grid"></div>
-                    <div id="prop-empty" class="empty-state hidden">
-                        <div class="empty-state-icon">🏠</div>
-                        <div class="empty-state-title">No listings yet — paste above to get started</div>
-                    </div>
-                </div>
-            </div>
-
-        </main>
-    </div>
-
-    <script src="/js/admin.js"></script>
+  <script src="/js/admin.js"></script>
 </body>
 </html>

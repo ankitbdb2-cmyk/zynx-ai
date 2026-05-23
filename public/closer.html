@@ -1,69 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CLOSER — PropMind</title>
-    <link rel="stylesheet" href="/css/design-system.css">
-    <link rel="stylesheet" href="/css/closer.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PropMind CLOSER — Negotiation Co-Pilot</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/design-system.css">
+  <link rel="stylesheet" href="/css/closer.css">
 </head>
-<body class="closer-page">
-    <header class="closer-header">
-        <a href="/" class="pm-brand">PropMind<span class="pm-brand-dot"></span></a>
+<body>
+
+  <div class="closer-layout">
+
+    <!-- Top Bar -->
+    <header class="closer-topbar">
+      <div class="closer-title">
         <h1>CLOSER</h1>
-        <a href="/admin.html" class="btn btn-ghost btn-sm">Dashboard</a>
+        <span class="closer-badge">Negotiation Co-Pilot</span>
+      </div>
+      <div style="display:flex; align-items:center; gap:1rem;">
+        <a href="/" class="btn btn-outline" style="font-size:13px; padding:0.5rem 1rem;">← Back</a>
+        <a href="/admin.html" class="btn btn-surface" style="font-size:13px; padding:0.5rem 1rem;">Dashboard</a>
+      </div>
     </header>
 
-    <main class="closer-main">
-        <div class="closer-input-panel">
-            <p class="section-header" style="margin-bottom:1rem">Buyer input</p>
-            <textarea id="buyer-input" class="closer-textarea" placeholder="What did the buyer just say? Type or paste here..."></textarea>
+    <!-- Body -->
+    <div class="closer-body">
 
-            <button id="analyze-btn" class="btn btn-primary w-full" style="margin-bottom:0.5rem">Analyze</button>
-            <button id="emergency-btn" class="btn btn-danger w-full">Close Now</button>
+      <!-- Left: Input Panel -->
+      <div class="closer-input-panel">
 
-            <p class="section-header" style="margin:1.5rem 0 0.75rem">Quick objections</p>
-            <div class="objections-grid" id="objections-grid"></div>
-
-            <button id="followup-btn" class="btn btn-ghost w-full" style="margin-top:1rem">Generate Follow-up</button>
+        <!-- Textarea -->
+        <div>
+          <div class="panel-section-title">What did the buyer just say?</div>
+          <textarea id="buyer-input" class="closer-textarea" placeholder="Type or paste what the buyer said right now..."></textarea>
         </div>
 
-        <div class="closer-insight-panel">
-            <div id="closer-loading" class="closer-loading hidden">
-                <div class="loader-gold" style="margin:0 auto"></div>
-                <p>Analyzing…</p>
-            </div>
-
-            <div id="closer-results" class="hidden">
-                <div class="insight-card accent-gold">
-                    <h4>Exact Words To Say</h4>
-                    <p id="res-exact" style="font-size:1.1rem;font-weight:600"></p>
-                </div>
-                <div class="insight-card accent-blue">
-                    <h4>Psychological Insight</h4>
-                    <p id="res-psych"></p>
-                </div>
-                <div class="insight-card accent-red">
-                    <h4>Danger Signals</h4>
-                    <p id="res-danger"></p>
-                </div>
-                <div class="insight-card accent-green">
-                    <h4>Tactic</h4>
-                    <p id="res-tactic"></p>
-                </div>
-            </div>
-
-            <div id="closer-text-result" class="hidden">
-                <div class="insight-card accent-gold">
-                    <h4 id="text-result-title">Result</h4>
-                    <p id="text-result-content"></p>
-                </div>
-            </div>
-
-            <div id="closer-empty" class="closer-empty">Waiting for input…</div>
+        <!-- Actions -->
+        <div class="action-row">
+          <button id="analyze-btn" class="btn-analyze">⚡ Analyze Now</button>
+          <button id="emergency-btn" class="btn-emergency">🚨 CLOSE NOW</button>
+          <button id="followup-btn" class="btn-followup">✉ Generate Follow-up Message</button>
         </div>
-    </main>
 
-    <script src="/js/closer.js"></script>
+        <!-- Objections -->
+        <div>
+          <div class="panel-section-title">Quick Objections</div>
+          <div class="objections-grid" id="objections-grid"></div>
+        </div>
+
+      </div>
+
+      <!-- Right: Insight Panel -->
+      <div class="closer-insight-panel" id="insight-panel">
+
+        <!-- Empty State -->
+        <div class="closer-empty" id="closer-empty">
+          <div class="closer-empty-icon">🎯</div>
+          <h3>Ready to close</h3>
+          <p>Type what the buyer said, pick an objection, or hit Analyze to get your co-pilot insights.</p>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading-container hidden" id="closer-loading">
+          <div class="spinner"></div>
+          <p>Analyzing buyer psychology...</p>
+        </div>
+
+        <!-- Results: Analyze -->
+        <div id="closer-results" class="hidden" style="display:none; flex-direction:column; gap:1rem;">
+          <div class="insight-card cyan-accent">
+            <h4>Exact Words To Say</h4>
+            <p id="res-exact"></p>
+          </div>
+          <div class="insight-card purple-accent">
+            <h4>Psychological Insight</h4>
+            <p id="res-psych"></p>
+          </div>
+          <div class="insight-card amber-accent">
+            <h4>Negotiation Tactic</h4>
+            <p id="res-tactic"></p>
+          </div>
+          <div class="insight-card red-accent">
+            <h4>⚠ Danger Signals</h4>
+            <p id="res-danger"></p>
+          </div>
+        </div>
+
+        <!-- Results: Text (followup / emergency) -->
+        <div id="closer-text-result" class="hidden" style="display:none; flex-direction:column; gap:1rem;">
+          <div class="insight-card cyan-accent">
+            <h4 id="text-result-title">Result</h4>
+            <p id="text-result-content" style="white-space:pre-wrap; line-height:1.7;"></p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/closer.js"></script>
 </body>
 </html>

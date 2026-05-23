@@ -1,329 +1,674 @@
-/* Admin Dashboard */
-@import url('design-system.css');
+/* ============================================================
+   admin.css — Hyper-Futuristic Dark Admin Dashboard
+   ============================================================ */
+@import url("design-system.css");
 
-body.admin-bg {
-    background: var(--bg);
-    color: var(--text);
-    height: 100vh;
-    overflow: hidden;
+/* ----------------------------------------------------------
+   CSS Variables (admin-specific overrides & additions)
+   ---------------------------------------------------------- */
+:root {
+  --admin-bg: #050508;
+  --admin-surface: #0d0d14;
+  --admin-surface2: #12121c;
+  --accent: #00f5ff;
+  --accent2: #7b2fff;
+  --accent3: #00ff88;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --accent-dim: rgba(0, 245, 255, 0.07);
+  --accent2-dim: rgba(123, 47, 255, 0.07);
+  --border: rgba(255, 255, 255, 0.06);
+  --border-hover: rgba(255, 255, 255, 0.1);
+  --text: #e4e4e7;
+  --text-muted: rgba(255, 255, 255, 0.45);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
 }
 
-/* Login */
+/* ----------------------------------------------------------
+   1. Admin Layout
+   ---------------------------------------------------------- */
+.admin-layout {
+  display: flex;
+  height: 100vh;
+  background: var(--bg, var(--admin-bg));
+  color: var(--text);
+}
+
+/* ----------------------------------------------------------
+   2. Login Wrapper
+   ---------------------------------------------------------- */
 .login-wrapper {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    height: 100vh;
-    background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background: var(--bg, var(--admin-bg));
 }
+
+/* ----------------------------------------------------------
+   3. Login Card
+   ---------------------------------------------------------- */
 .login-card {
-    width: 100%;
-    max-width: 400px;
-    padding: 2.5rem;
-    background: var(--glass);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    backdrop-filter: blur(20px);
-}
-.login-title {
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: var(--text);
-    text-align: center;
-    margin-bottom: 0.35rem;
-}
-.login-subtitle {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    text-align: center;
-    margin-bottom: 2rem;
+  background: var(--surface, var(--admin-surface));
+  border: 1px solid var(--border-hover);
+  border-radius: 20px;
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(0, 245, 255, 0.05);
 }
 
-/* Layout */
-.dashboard-wrapper { display: flex; height: 100vh; }
+/* ----------------------------------------------------------
+   4. Login Header
+   ---------------------------------------------------------- */
+.login-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
 
+.login-header .logo {
+  font-size: 24px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.login-header p {
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ----------------------------------------------------------
+   5. Form Group
+   ---------------------------------------------------------- */
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: var(--admin-surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-group input:focus {
+  border-color: var(--accent);
+}
+
+.form-group input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ----------------------------------------------------------
+   6. Sidebar
+   ---------------------------------------------------------- */
 .sidebar {
-    width: 240px;
-    background: var(--surface2);
-    border-right: 1px solid var(--border);
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
+  width: 240px;
+  background: var(--admin-surface2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
 }
+
+/* ----------------------------------------------------------
+   7. Sidebar Header
+   ---------------------------------------------------------- */
 .sidebar-header {
-    padding: 1.5rem 1.25rem;
-    border-bottom: 1px solid var(--border);
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border);
 }
-.sidebar-brand { font-weight: 700; color: var(--text); font-size: 1rem; }
-.sidebar-brand-sub { font-size: 0.68rem; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em; }
 
-.sidebar-nav { padding: 1rem 0.75rem; flex: 1; display: flex; flex-direction: column; gap: 0.2rem; }
+.sidebar-header .logo {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+/* ----------------------------------------------------------
+   8. Sidebar Tag
+   ---------------------------------------------------------- */
+.sidebar-tag {
+  display: inline-block;
+  margin-top: 0.4rem;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 245, 255, 0.2);
+}
+
+/* ----------------------------------------------------------
+   9. Nav Item
+   ---------------------------------------------------------- */
 .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.7rem 0.875rem;
-    color: var(--text-muted);
-    text-decoration: none;
-    border-radius: 8px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    cursor: pointer;
-    transition: all var(--ease);
-    border-left: 3px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 1.5rem;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  border-left: 3px solid transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
 }
-.nav-item:hover { color: var(--text); background: var(--glass); }
+
+.nav-item:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+  border-left-color: var(--border-hover);
+}
+
+/* ----------------------------------------------------------
+   10. Nav Item Active
+   ---------------------------------------------------------- */
 .nav-item.active {
-    color: var(--gold);
-    background: rgba(201, 168, 76, 0.08);
-    border-left-color: var(--gold);
+  color: var(--accent);
+  background: var(--accent-dim);
+  border-left-color: var(--accent);
 }
-.nav-divider { height: 1px; background: var(--border); margin: 0.5rem 0; }
-.sidebar-footer { padding: 1rem 0.75rem; border-top: 1px solid var(--border); }
 
+/* ----------------------------------------------------------
+   11. Dashboard Main
+   ---------------------------------------------------------- */
 .dashboard-main {
-    flex: 1;
-    overflow-y: auto;
-    background: var(--bg);
+  flex: 1;
+  overflow-y: auto;
+  background: var(--bg, var(--admin-bg));
 }
 
-.page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 2rem 2rem 0;
-    margin-bottom: 1.5rem;
-    flex-wrap: wrap;
-    gap: 1rem;
+/* ----------------------------------------------------------
+   12. Dashboard Header
+   ---------------------------------------------------------- */
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface, var(--admin-surface));
+  flex-shrink: 0;
 }
-.page-subtitle { font-size: 14px; color: var(--text-muted); margin-top: 0.35rem; }
 
-/* Glass metric cards */
-.stats-grid, .analytics-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1rem;
-    padding: 0 2rem 1.5rem;
+.dashboard-header h1 {
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
-.stat-card, .kpi-card, .chart-card {
-    padding: 1.5rem;
-    background: var(--glass);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    backdrop-filter: blur(20px);
-    transition: border-color var(--ease);
-}
-.stat-card:hover, .kpi-card:hover { border-color: var(--border-hover); }
 
-.stat-label, .kpi-label {
-    font-size: 0.72rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
-    margin-bottom: 0.5rem;
+.dashboard-content {
+  padding: 2rem;
 }
-.stat-value, .kpi-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--text);
-}
-.kpi-value.accent-green { color: var(--success); }
-.kpi-value.accent-blue { color: var(--blue); }
-.kpi-value.accent-red { color: var(--danger); }
 
-.charts-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 1.25rem;
-    padding: 0 2rem 1.5rem;
+/* ----------------------------------------------------------
+   13. Stats Grid
+   ---------------------------------------------------------- */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
 }
-.chart-card-title { font-size: 18px; font-weight: 600; color: var(--text-muted); margin-bottom: 1rem; }
 
-/* Tables */
-.section { padding: 0 2rem 2rem; }
-.section-title { font-size: 18px; font-weight: 600; color: var(--text-muted); }
-.table-wrap {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    overflow: hidden;
+/* ----------------------------------------------------------
+   14. Stat Card — Glass-Card Style
+   ---------------------------------------------------------- */
+.stat-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 1.4rem 1.5rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.25s ease;
 }
-.data-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-.data-table thead tr { background: var(--surface2); border-bottom: 1px solid var(--border); }
-.data-table th {
-    padding: 0.875rem 1.25rem;
-    text-align: left;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-muted);
-}
-.data-table td {
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--border);
-    color: var(--text);
-    background: var(--surface);
-}
-.data-table tbody tr { transition: background var(--ease); }
-.data-table tbody tr:hover td { background: var(--surface2); }
-.data-table tbody tr:last-child td { border-bottom: none; }
 
+.stat-card:hover {
+  border-color: var(--border-hover);
+}
+
+.stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+}
+
+/* ----------------------------------------------------------
+   15. Stat Card Color Variants — Top Bar Gradients
+   ---------------------------------------------------------- */
+.stat-card.cyan::before {
+  background: linear-gradient(90deg, var(--accent), transparent);
+}
+
+.stat-card.red::before {
+  background: linear-gradient(90deg, var(--red), transparent);
+}
+
+.stat-card.purple::before {
+  background: linear-gradient(90deg, var(--accent2), transparent);
+}
+
+.stat-card.green::before {
+  background: linear-gradient(90deg, var(--accent3), transparent);
+}
+
+.stat-card.amber::before {
+  background: linear-gradient(90deg, var(--amber), transparent);
+}
+
+/* ----------------------------------------------------------
+   16. Stat Label
+   ---------------------------------------------------------- */
+.stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* ----------------------------------------------------------
+   17. Stat Value — Color per Card Variant
+   ---------------------------------------------------------- */
+.stat-value {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.stat-card.cyan .stat-value {
+  color: var(--accent);
+}
+
+.stat-card.red .stat-value {
+  color: var(--red);
+}
+
+.stat-card.purple .stat-value {
+  color: var(--accent2);
+}
+
+.stat-card.green .stat-value {
+  color: var(--accent3);
+}
+
+.stat-card.amber .stat-value {
+  color: var(--amber);
+}
+
+.stat-change {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+}
+
+.stat-change.up {
+  color: var(--accent3);
+}
+
+.stat-change.down {
+  color: var(--red);
+}
+
+/* ----------------------------------------------------------
+   18. Table Container & Header
+   ---------------------------------------------------------- */
+.table-container {
+  background: var(--surface, var(--admin-surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.table-container table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-container thead {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.table-container thead th {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--accent);
+  letter-spacing: 0.06em;
+  padding: 0.85rem 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------
+   19. Table Body Rows
+   ---------------------------------------------------------- */
+.table-container tbody tr {
+  background: var(--surface, var(--admin-surface));
+  transition: background 0.15s ease;
+}
+
+.table-container tbody tr:hover {
+  background: var(--admin-surface2);
+}
+
+.table-container tbody td {
+  font-size: 13.5px;
+  color: var(--text);
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table-container tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.lead-name {
+  font-weight: 600;
+}
+
+.lead-budget {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.lead-date {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* ----------------------------------------------------------
+   20. Status Select
+   ---------------------------------------------------------- */
 .status-select {
-    background: var(--surface2);
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 0.35rem 0.6rem;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    outline: none;
-    cursor: pointer;
-}
-.status-select:focus { border-color: var(--gold); }
-
-/* Agency bar */
-.agency-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    margin: 0 2rem 1.5rem;
-    padding: 1rem 1.25rem;
-    background: var(--glass);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    flex-wrap: wrap;
-}
-.agency-bar-label { font-size: 0.75rem; font-weight: 700; color: var(--gold); text-transform: uppercase; }
-.agency-save-feedback { font-size: 0.82rem; color: var(--success); opacity: 0; transition: opacity 0.3s; }
-
-/* Properties */
-.property-grid, .paste-preview-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1rem;
-}
-.prop-card, .paste-preview-card {
-    padding: 1.25rem;
-    background: var(--glass);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    transition: all var(--ease);
-}
-.prop-card:hover { border-color: var(--border-hover); }
-.prop-card-title { font-weight: 700; color: var(--text); }
-.prop-card-area { font-size: 0.82rem; color: var(--text-muted); }
-.prop-card-price { font-weight: 700; color: var(--gold); margin-top: 0.35rem; }
-
-.smart-paste-panel {
-    margin: 0 2rem 1.5rem;
-    padding: 1.75rem;
-    background: var(--glass);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-lg);
-    backdrop-filter: blur(20px);
-}
-.smart-paste-title { font-size: 1.1rem; font-weight: 700; color: var(--text); }
-.smart-paste-sub { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.35rem; line-height: 1.5; }
-.smart-paste-actions { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
-
-.scheduler-grid {
-    display: grid;
-    grid-template-columns: minmax(280px, 340px) 1fr;
-    gap: 1.5rem;
-    padding: 0 2rem 1.5rem;
-}
-.slot-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.875rem 1rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 0.5rem;
-    transition: background var(--ease);
-}
-.slot-item:hover { background: var(--surface2); }
-.slot-count-badge {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--gold);
-    background: rgba(201, 168, 76, 0.1);
-    padding: 0.25rem 0.65rem;
-    border-radius: 99px;
-}
-.persistence-badge {
-    font-size: 0.72rem;
-    color: var(--success);
-    background: rgba(52, 211, 153, 0.1);
-    padding: 0.3rem 0.65rem;
-    border-radius: 99px;
-    border: 1px solid rgba(52, 211, 153, 0.25);
+  background: var(--admin-surface2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  padding: 0.35rem 0.6rem;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
-.paste-loading {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1rem 0;
-    color: var(--gold);
-}
-.paste-spinner {
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--border);
-    border-top-color: var(--gold);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+.status-select:focus {
+  border-color: var(--accent);
 }
 
-.viewing-badge {
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 0.2rem 0.55rem;
-    border-radius: 99px;
-}
-.viewing-badge.confirmed { background: rgba(52, 211, 153, 0.12); color: var(--success); }
-.viewing-badge.offered { background: rgba(201, 168, 76, 0.12); color: var(--gold); }
-
-.empty-state {
-    text-align: center;
-    padding: 3rem 2rem;
-    color: var(--text-muted);
-}
-.empty-state-title { color: var(--text); font-weight: 600; margin-bottom: 0.35rem; }
-
-.btn-outline {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1px solid var(--border);
-}
-.btn-outline:hover { color: var(--text); border-color: var(--border-hover); }
-
-.section-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-    flex-wrap: wrap;
-    gap: 0.75rem;
+/* ----------------------------------------------------------
+   21. Psych Note — Ellipsis Truncation
+   ---------------------------------------------------------- */
+.psych-note {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
-.commission-card .commission-desc { font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1rem; }
-.commission-input-row { display: flex; align-items: center; gap: 0.5rem; }
-.commission-currency { font-weight: 700; color: var(--gold); }
-.commission-field { flex: 1; max-width: 160px; }
+/* ----------------------------------------------------------
+   Utility: Table Title Bar
+   ---------------------------------------------------------- */
+.table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
 
+.table-header h2 {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+/* ----------------------------------------------------------
+   Utility: Buttons (admin context)
+   ---------------------------------------------------------- */
+.btn-admin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.4rem;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-admin.primary {
+  background: var(--accent);
+  color: #050508;
+}
+
+.btn-admin.primary:hover {
+  background: #33f7ff;
+  box-shadow: 0 0 24px rgba(0, 245, 255, 0.25);
+}
+
+.btn-admin.secondary {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-admin.secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--border-hover);
+}
+
+.btn-admin.danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: var(--red);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.btn-admin.danger:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+/* ----------------------------------------------------------
+   Utility: Badges & Status Pills
+   ---------------------------------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 10px;
+  border-radius: 100px;
+}
+
+.badge.cyan {
+  color: var(--accent);
+  background: var(--accent-dim);
+  border: 1px solid rgba(0, 245, 255, 0.15);
+}
+
+.badge.green {
+  color: var(--accent3);
+  background: rgba(0, 255, 136, 0.07);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+}
+
+.badge.red {
+  color: var(--red);
+  background: rgba(239, 68, 68, 0.07);
+  border: 1px solid rgba(239, 68, 68, 0.15);
+}
+
+.badge.amber {
+  color: var(--amber);
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
+.badge.purple {
+  color: var(--accent2);
+  background: var(--accent2-dim);
+  border: 1px solid rgba(123, 47, 255, 0.15);
+}
+
+/* ----------------------------------------------------------
+   Utility: Search Input
+   ---------------------------------------------------------- */
+.search-input {
+  background: var(--admin-surface2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  padding: 0.55rem 1rem;
+  outline: none;
+  min-width: 220px;
+  transition: border-color 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ----------------------------------------------------------
+   Sidebar Nav Section
+   ---------------------------------------------------------- */
+.nav-section {
+  padding: 1.25rem 0;
+}
+
+.nav-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  padding: 0 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 1.25rem 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ----------------------------------------------------------
+   Scrollbar Styling
+   ---------------------------------------------------------- */
+.dashboard-main::-webkit-scrollbar,
+.sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.dashboard-main::-webkit-scrollbar-track,
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.dashboard-main::-webkit-scrollbar-thumb,
+.sidebar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 100px;
+}
+
+.dashboard-main::-webkit-scrollbar-thumb:hover,
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* ----------------------------------------------------------
+   22. Mobile Responsive — Sidebar Hidden < 768px
+   ---------------------------------------------------------- */
 @media (max-width: 768px) {
-    .dashboard-wrapper { flex-direction: column; height: auto; }
-    .sidebar { width: 100%; }
-    .sidebar-nav { flex-direction: row; flex-wrap: wrap; }
-    .dashboard-main { overflow: visible; }
-    .page-header, .section, .stats-grid, .analytics-kpi-grid, .charts-row, .agency-bar, .smart-paste-panel, .scheduler-grid { padding-left: 1rem; padding-right: 1rem; }
-    .scheduler-grid { grid-template-columns: 1fr; }
+  .sidebar {
+    display: none;
+  }
+
+  .dashboard-header {
+    padding: 1.25rem 1.25rem;
+  }
+
+  .dashboard-content {
+    padding: 1.25rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .login-card {
+    margin: 1rem;
+    padding: 2rem 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 }

@@ -1,140 +1,403 @@
-/* CLOSER — Negotiation Co-Pilot */
-.closer-page {
-    min-height: 100vh;
-    background: var(--bg);
-    display: flex;
-    flex-direction: column;
+/* ============================================================
+   CLOSER – Negotiation Co-Pilot
+   Hyper-futuristic dark theme
+   ============================================================ */
+@import url("design-system.css");
+
+/* ── Local Tokens ─────────────────────────────────────────── */
+:root {
+  --closer-accent:      #00f5ff;
+  --closer-accent-dim:  rgba(0, 245, 255, 0.12);
+  --closer-accent-glow: rgba(0, 245, 255, 0.35);
+  --closer-accent2:     #7b2fff;
+  --closer-accent2-dim: rgba(123, 47, 255, 0.12);
+  --closer-accent3:     #00ff88;
+  --closer-red:         #ef4444;
+  --closer-red-glow:    rgba(239, 68, 68, 0.35);
+  --closer-amber:       #f59e0b;
 }
 
-.closer-header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 1rem 2rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+/* ============================================================
+   1. Layout Shell
+   ============================================================ */
+.closer-layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg, #050508);
 }
 
-.closer-header h1 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: var(--text);
-    letter-spacing: 0.12em;
+/* ============================================================
+   2. Top Bar
+   ============================================================ */
+.closer-topbar {
+  background: var(--surface, #0d0d14);
+  border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  padding: 0 2rem;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
 }
 
-.closer-main {
-    flex: 1;
-    display: flex;
-    overflow: hidden;
+/* ============================================================
+   3. Title
+   ============================================================ */
+.closer-title h1 {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--accent, #00f5ff);
+  text-transform: uppercase;
+  margin: 0;
+  line-height: 1;
 }
 
+/* ============================================================
+   4. Badge
+   ============================================================ */
+.closer-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent2, #7b2fff);
+  background: var(--closer-accent2-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(123, 47, 255, 0.2);
+  line-height: 1.6;
+}
+
+/* ============================================================
+   5. Body
+   ============================================================ */
+.closer-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ============================================================
+   6. Input Panel (left)
+   ============================================================ */
 .closer-input-panel {
-    width: 40%;
-    padding: 2rem;
-    border-right: 1px solid var(--border);
-    overflow-y: auto;
-    background: var(--bg);
+  width: 38%;
+  padding: 1.5rem;
+  border-right: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  background: var(--surface, #0d0d14);
 }
 
-.closer-insight-panel {
-    width: 60%;
-    padding: 2rem;
-    overflow-y: auto;
-    background: var(--bg);
+/* ============================================================
+   7. Panel Section Title
+   ============================================================ */
+.panel-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted, #888);
+  margin-bottom: 0.5rem;
 }
 
+/* ============================================================
+   8. Textarea
+   ============================================================ */
 .closer-textarea {
-    width: 100%;
-    min-height: 160px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-    color: var(--text);
-    font-size: 1rem;
-    font-family: inherit;
-    resize: vertical;
-    outline: none;
-    margin-bottom: 1rem;
-    transition: border-color var(--ease), box-shadow var(--ease);
+  background: var(--surface2, #141420);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  border-radius: 12px;
+  padding: 1rem;
+  color: var(--text, #e2e2e2);
+  font-size: 14px;
+  font-family: inherit;
+  resize: none;
+  width: 100%;
+  height: 130px;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
 }
+
 .closer-textarea:focus {
-    border-color: var(--gold);
-    box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.15);
+  border-color: var(--accent, #00f5ff);
+  box-shadow: 0 0 0 3px var(--closer-accent-dim);
 }
 
+/* ============================================================
+   9. Analyze Button
+   ============================================================ */
+.btn-analyze {
+  background: var(--surface2, #141420);
+  border: 1px solid var(--accent, #00f5ff);
+  color: var(--accent, #00f5ff);
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.75rem;
+  font-size: 14px;
+  font-weight: 700;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-analyze:hover {
+  background: rgba(0, 245, 255, 0.1);
+  color: #80faff;
+  box-shadow: 0 0 20px var(--closer-accent-glow);
+}
+
+/* ============================================================
+   10. Emergency Button
+   ============================================================ */
+.btn-emergency {
+  background: transparent;
+  border: 1.5px solid var(--closer-red);
+  color: var(--closer-red);
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.75rem;
+  font-size: 14px;
+  font-weight: 800;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.btn-emergency:hover {
+  background: var(--closer-red);
+  color: #fff;
+  box-shadow: 0 0 24px var(--closer-red-glow);
+}
+
+/* ============================================================
+   11. Follow-Up Button
+   ============================================================ */
+.btn-followup {
+  background: var(--surface2, #141420);
+  border: 1px solid var(--border-hover, rgba(255, 255, 255, 0.12));
+  color: var(--text-muted, #888);
+  border-radius: var(--radius-sm, 8px);
+  padding: 0.65rem;
+  font-size: 13px;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.btn-followup:hover {
+  border-color: var(--accent2, #7b2fff);
+  color: var(--accent2, #7b2fff);
+}
+
+/* ============================================================
+   12. Objections Grid
+   ============================================================ */
 .objections-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
+/* ============================================================
+   13. Objection Button
+   ============================================================ */
 .obj-btn {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-muted);
-    padding: 0.6rem 0.75rem;
-    border-radius: 8px;
-    font-size: 0.82rem;
-    cursor: pointer;
-    text-align: left;
-    transition: all var(--ease);
+  background: var(--surface2, #141420);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  color: var(--text-muted, #888);
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
+
 .obj-btn:hover {
-    border-color: var(--border-hover);
-    color: var(--text);
-    background: var(--glass);
+  background: var(--surface3, #1a1a2e);
+  border-color: var(--accent, #00f5ff);
+  color: var(--text, #e2e2e2);
 }
 
+/* ============================================================
+   14. Insight Panel (right)
+   ============================================================ */
+.closer-insight-panel {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: var(--bg, #050508);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* ============================================================
+   15. Insight Card (base)
+   ============================================================ */
 .insight-card {
-    padding: 1.5rem;
-    margin-bottom: 1.25rem;
-    border-radius: var(--radius-lg);
-    background: var(--glass);
-    border: 1px solid var(--border);
-    backdrop-filter: blur(20px);
+  background: var(--glass-bg, rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  padding: 1.25rem 1.4rem;
+  border-left: 4px solid transparent;
+  border-radius: var(--radius-lg, 16px);
+  transition: border-color 0.2s ease, background 0.2s ease;
 }
+
 .insight-card h4 {
-    font-size: 0.72rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--text-muted);
-    margin-bottom: 0.65rem;
-}
-.insight-card p { line-height: 1.6; color: var(--text); font-size: 0.95rem; }
-
-.insight-card.accent-gold {
-    border-left: 3px solid var(--gold);
-    box-shadow: 0 0 24px rgba(201, 168, 76, 0.06);
-}
-.insight-card.accent-blue {
-    border-left: 3px solid var(--blue);
-}
-.insight-card.accent-red {
-    border-left: 3px solid var(--danger);
-}
-.insight-card.accent-green {
-    border-left: 3px solid var(--success);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 0.5rem 0;
 }
 
+.insight-card p {
+  font-size: 14px;
+  line-height: 1.65;
+  margin: 0;
+  color: var(--text, #e2e2e2);
+}
+
+/* ============================================================
+   16. Insight Card – Cyan Accent
+   ============================================================ */
+.insight-card.cyan-accent {
+  border-left-color: var(--accent, #00f5ff);
+  background: rgba(0, 245, 255, 0.04);
+}
+
+.insight-card.cyan-accent h4 {
+  color: var(--accent, #00f5ff);
+}
+
+.insight-card.cyan-accent p {
+  font-size: 15px;
+  font-weight: 600;
+  color: #c0f8ff;
+}
+
+/* ============================================================
+   17. Insight Card – Purple Accent
+   ============================================================ */
+.insight-card.purple-accent {
+  border-left-color: var(--accent2, #7b2fff);
+  background: rgba(123, 47, 255, 0.04);
+}
+
+.insight-card.purple-accent h4 {
+  color: var(--accent2, #7b2fff);
+}
+
+/* ============================================================
+   18. Insight Card – Amber Accent
+   ============================================================ */
+.insight-card.amber-accent {
+  border-left-color: var(--closer-amber);
+  background: rgba(245, 158, 11, 0.04);
+}
+
+.insight-card.amber-accent h4 {
+  color: var(--closer-amber);
+}
+
+/* ============================================================
+   19. Insight Card – Red Accent
+   ============================================================ */
+.insight-card.red-accent {
+  border-left-color: var(--closer-red);
+  background: rgba(239, 68, 68, 0.04);
+}
+
+.insight-card.red-accent h4 {
+  color: var(--closer-red);
+}
+
+/* ============================================================
+   20. Spinner
+   ============================================================ */
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border, rgba(255, 255, 255, 0.06));
+  border-top-color: var(--accent, #00f5ff);
+  border-radius: 50%;
+  animation: closer-spin 0.8s linear infinite;
+}
+
+@keyframes closer-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ============================================================
+   21. Empty State
+   ============================================================ */
 .closer-empty {
-    height: 100%;
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--text-muted);
-    font-size: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted, #888);
+  text-align: center;
+  gap: 0.75rem;
 }
 
-.closer-loading {
-    text-align: center;
-    padding: 4rem 0;
+.closer-empty-icon {
+  font-size: 40px;
+  opacity: 0.3;
+  line-height: 1;
 }
-.closer-loading p { color: var(--text-muted); margin-top: 1rem; }
 
+.closer-empty h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-muted, #888);
+  margin: 0;
+}
+
+.closer-empty p {
+  font-size: 13px;
+  color: var(--text-dim, #555);
+  margin: 0;
+  max-width: 260px;
+  line-height: 1.5;
+}
+
+/* ============================================================
+   22. Mobile · < 768px
+   ============================================================ */
 @media (max-width: 768px) {
-    .closer-main { flex-direction: column; }
-    .closer-input-panel, .closer-insight-panel { width: 100%; }
+  .closer-body {
+    flex-direction: column;
+  }
+
+  .closer-input-panel {
+    width: 100%;
+    height: 50vh;
+    border-right: none;
+    border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.06));
+  }
+
+  .closer-insight-panel {
+    height: 50vh;
+  }
+
+  .closer-topbar {
+    padding: 0 1rem;
+  }
 }

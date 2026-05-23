@@ -13,6 +13,7 @@ The complete real estate AI SaaS system.
    Add your Anthropic API Key to the `.env` file in the root directory:
    ```
    ANTHROPIC_API_KEY=your_key_here
+   GEMINI_API_KEY=your_free_gemini_key_here
    PORT=8080
    ```
 
@@ -31,7 +32,9 @@ The complete real estate AI SaaS system.
 
 ## Smart Listing Paste
 
-In Admin → Properties, paste raw Property Finder / Bayut text. Claude extracts all listings; preview and confirm before saving.
+In Admin → Properties, paste raw Property Finder / Bayut text. **Gemini** (free tier) extracts all listings; preview and confirm before saving. Sarah chat still uses Claude (`ANTHROPIC_API_KEY`).
+
+Get a free Gemini key: https://aistudio.google.com/apikey → set `GEMINI_API_KEY` on Render.
 
 ## Data Persistence (Render)
 

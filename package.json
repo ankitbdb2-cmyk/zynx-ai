@@ -18,10 +18,14 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",
+    "@google/generative-ai": "^0.24.1",
     "better-sqlite3": "^12.9.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "nodemailer": "^8.0.6"
+  },
+  "devDependencies": {
+    "puppeteer": "^25.0.4"
   }
 }
