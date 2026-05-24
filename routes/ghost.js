@@ -19,6 +19,32 @@ router.get('/config', (req, res) => {
     }
 });
 
+// ─── Public properties listing — no auth required ───
+router.get('/properties', (req, res) => {
+    try {
+        const rows = db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
+        res.json({ properties: rows });
+    } catch (e) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// ─── Public stats — no auth required (for homepage analytics section) ───
+router.get('/stats', (req, res) => {
+    try {
+        const totalLeads = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')`).get().count;
+        const hotLeads = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE hot_score >= 7`).get().count;
+        const allRow = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
+        const bookedRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE status IN ('Visit Scheduled', 'Closed') OR viewing_confirmed = 1`).get().count;
+        const conversionRate = allRow > 0 ? Math.round((bookedRow / allRow) * 100) : 0;
+        const commissionRow = db.prepare(`SELECT value FROM settings WHERE key = 'weekly_commission'`).get();
+        const commission = commissionRow ? parseFloat(commissionRow.value) || 0 : 0;
+        res.json({ totalLeads, hotLeads, conversionRate, commission });
+    } catch (e) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 router.post('/chat', async (req, res) => {
     try {
         const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();

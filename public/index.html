@@ -219,6 +219,46 @@
         <p>The moment a lead is captured, you get a professional email with full details and AI psychology notes.</p>
       </div>
     </div>
+  </div><!-- /section features -->
+
+  <!-- ─── Analytics / Weekly Metrics ─────────────────── -->
+  <div class="section" style="text-align:center;">
+    <div class="section-label">Live Performance</div>
+    <h2 class="section-title" style="margin:0 auto 0.75rem;">Weekly Analytics</h2>
+    <p class="section-sub" style="margin:0 auto 2.5rem;">Real-time numbers from your GHOST AI lead engine.</p>
+    <div class="analytics-grid">
+      <div class="analytics-card">
+        <div class="analytics-icon">📥</div>
+        <div class="analytics-val" id="stat-leads">—</div>
+        <div class="analytics-label">Leads This Week</div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-icon">🔥</div>
+        <div class="analytics-val" id="stat-hot">—</div>
+        <div class="analytics-label">Hot Leads</div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-icon">📈</div>
+        <div class="analytics-val" id="stat-conv">—</div>
+        <div class="analytics-label">Conversion Rate</div>
+      </div>
+      <div class="analytics-card">
+        <div class="analytics-icon">💰</div>
+        <div class="analytics-val" id="stat-comm">—</div>
+        <div class="analytics-label">Commission Tracked</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── Properties Section ──────────────────────────── -->
+  <div id="properties-section" class="section">
+    <div class="section-label">Live Listings</div>
+    <h2 class="section-title">Available Properties</h2>
+    <div class="props-accent-line"></div>
+    <p class="section-sub">Sourced directly from your active database — updated in real time.</p>
+    <div class="properties-grid" id="properties-grid">
+      <!-- cards injected by JS -->
+    </div>
   </div>
 
   <footer class="home-footer">
@@ -228,5 +268,60 @@
 
   <div id="ghost-widget-container"></div>
   <script src="/js/ghost.js"></script>
+  <script>
+    /* ── Analytics Section ─── */
+    fetch('/api/ghost/stats')
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('stat-leads').textContent = data.totalLeads ?? 0;
+        document.getElementById('stat-hot').textContent   = data.hotLeads ?? 0;
+        document.getElementById('stat-conv').textContent  = (data.conversionRate ?? 0) + '%';
+        const comm = data.commission > 0
+          ? 'AED ' + data.commission.toLocaleString()
+          : '—';
+        document.getElementById('stat-comm').textContent = comm;
+      })
+      .catch(() => {});
+
+    /* ── Properties Section ─── */
+    fetch('/api/ghost/properties')
+      .then(r => r.json())
+      .then(data => {
+        const grid = document.getElementById('properties-grid');
+        const section = document.getElementById('properties-section');
+        if (!data.properties || data.properties.length === 0) {
+          section.style.display = 'none';
+          return;
+        }
+        grid.innerHTML = '';
+        data.properties.forEach(p => {
+          const card = document.createElement('div');
+          card.className = 'prop-card';
+          card.innerHTML = `
+            <div class="prop-type-badge">${esc(p.type || 'Listing')}</div>
+            <div class="prop-title">${esc(p.title || '—')}</div>
+            <div class="prop-area">${esc(p.area || '')}</div>
+            <div class="prop-price">${esc(p.price || '—')}</div>
+            <div class="prop-meta">
+              ${p.bedrooms ? `<span>🛏 ${esc(p.bedrooms)}</span>` : ''}
+              ${p.description ? `<span class="prop-size">${esc(p.description)}</span>` : ''}
+            </div>
+            <div class="prop-avail"><span class="prop-dot"></span> Available</div>
+          `;
+          grid.appendChild(card);
+        });
+      })
+      .catch(() => {
+        document.getElementById('properties-section').style.display = 'none';
+      });
+
+    function esc(str) {
+      return String(str)
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;');
+    }
+  </script>
 </body>
 </html>
