@@ -4,6 +4,10 @@
    ============================================================ */
 @import url("design-system.css");
 
+body {
+  background: var(--bg) !important;
+}
+
 /* ── Local Tokens ─────────────────────────────────────────── */
 :root {
   --closer-accent:      #00f5ff;

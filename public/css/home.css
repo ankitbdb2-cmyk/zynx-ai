@@ -60,7 +60,7 @@
     width: 80px;
     height: 3px;
     margin: 1.75rem auto 0;
-    background: linear-gradient(90deg, transparent, var(--gold), var(--gold-light), transparent);
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
     border-radius: 2px;
 }
 
@@ -124,8 +124,8 @@
     padding: 1.75rem;
 }
 .hp-feature-card:hover {
-    border-color: rgba(201, 168, 76, 0.2);
-    box-shadow: 0 0 48px rgba(201, 168, 76, 0.08);
+    border-color: rgba(0, 245, 255, 0.2);
+    box-shadow: 0 0 48px rgba(123, 47, 255, 0.08);
 }
 
 .hp-feature-card h3 {

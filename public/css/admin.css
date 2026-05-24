@@ -3,6 +3,10 @@
    ============================================================ */
 @import url("design-system.css");
 
+body {
+  background: var(--bg) !important;
+}
+
 /* ----------------------------------------------------------
    CSS Variables (admin-specific overrides & additions)
    ---------------------------------------------------------- */
