@@ -350,22 +350,22 @@ router.post('/properties/bulk', (req, res) => {
     }
 });
 
-router.delete('/properties/:id', (req, res) => {
-    try {
-        db.prepare(`DELETE FROM properties WHERE id = ?`).run(req.params.id);
-        res.json({ success: true });
-    } catch (err) {
-        console.error('Failed to delete property:', err);
-        res.status(500).json({ error: 'Database error' });
-    }
-});
-
 router.delete('/properties/all', (req, res) => {
     try {
         db.prepare(`DELETE FROM properties`).run();
         res.json({ success: true });
     } catch (err) {
         console.error('Failed to delete all properties:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.delete('/properties/:id', (req, res) => {
+    try {
+        db.prepare(`DELETE FROM properties WHERE id = ?`).run(req.params.id);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Failed to delete property:', err);
         res.status(500).json({ error: 'Database error' });
     }
 });
