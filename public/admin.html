@@ -51,6 +51,9 @@
         <a href="#" class="nav-item active" id="nav-leads">
           <span class="nav-item-icon">📋</span> Leads
         </a>
+        <a href="#" class="nav-item" id="nav-properties">
+          <span class="nav-item-icon">🏠</span> Properties
+        </a>
         <a href="/closer.html" class="nav-item">
           <span class="nav-item-icon">🎯</span> Closer Tool
         </a>
@@ -72,7 +75,7 @@
       <!-- Top Bar -->
       <header class="dashboard-header">
         <div class="dashboard-header-left">
-          <h2>Leads Dashboard</h2>
+          <h2 id="view-title">Leads Dashboard</h2>
           <p id="last-updated">Loading...</p>
         </div>
         <div class="dashboard-header-right">
@@ -85,53 +88,134 @@
       <!-- Content -->
       <div class="dashboard-content">
 
-        <!-- Stats -->
-        <div class="stats-grid">
-          <div class="stat-card cyan">
-            <div class="stat-label">Total Leads (7 days)</div>
-            <div class="stat-value" id="stat-total">—</div>
-            <div class="stat-sub">Captured by GHOST</div>
-          </div>
-          <div class="stat-card red">
-            <div class="stat-label">Hot / Urgent Leads</div>
-            <div class="stat-value" id="stat-hot">—</div>
-            <div class="stat-sub">Needs immediate follow-up</div>
-          </div>
-          <div class="stat-card purple">
-            <div class="stat-label">Conversion Rate</div>
-            <div class="stat-value" id="stat-conv">—%</div>
-            <div class="stat-sub">Leads closed this week</div>
-          </div>
-        </div>
-
-        <!-- Table -->
-        <div class="table-container">
-          <div class="table-header">
-            <div>
-              <h3>All Leads</h3>
-              <p>Captured from GHOST AI chat widget</p>
+        <!-- ─── LEADS VIEW PANEL ─── -->
+        <div id="panel-leads" class="view-panel">
+          <!-- Stats / Weekly Analytics -->
+          <div class="stats-grid">
+            <div class="stat-card cyan">
+              <div class="stat-label">Leads This Week</div>
+              <div class="stat-value" id="stat-total">—</div>
+              <div class="stat-sub">Captured by GHOST</div>
+            </div>
+            <div class="stat-card cyan">
+              <div class="stat-label">Hot Leads</div>
+              <div class="stat-value" id="stat-hot">—</div>
+              <div class="stat-sub">Needs immediate follow-up</div>
+            </div>
+            <div class="stat-card cyan">
+              <div class="stat-label">Conversion Rate</div>
+              <div class="stat-value" id="stat-conv">—%</div>
+              <div class="stat-sub">Percentage of closed leads</div>
+            </div>
+            <div class="stat-card cyan">
+              <div class="stat-label">Commission Tracked</div>
+              <div class="stat-value" id="stat-commission">—</div>
+              <div class="stat-sub">Weekly commission booked</div>
             </div>
           </div>
-          <div style="overflow-x:auto;">
-            <table class="leads-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Name</th>
-                  <th>Contact</th>
-                  <th>Budget</th>
-                  <th>Psychology Notes</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="leads-tbody">
-                <tr>
-                  <td colspan="6" class="empty-state">Loading leads...</td>
-                </tr>
-              </tbody>
-            </table>
+
+          <!-- Table -->
+          <div class="table-container">
+            <div class="table-header">
+              <div>
+                <h3>All Leads</h3>
+                <p>Captured from GHOST AI chat widget</p>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="leads-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Name</th>
+                    <th>Contact</th>
+                    <th>Budget</th>
+                    <th>Psychology Notes</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="leads-tbody">
+                  <tr>
+                    <td colspan="6" class="empty-state">Loading leads...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </div><!-- /panel-leads -->
+
+        <!-- ─── PROPERTIES VIEW PANEL ─── -->
+        <div id="panel-properties" class="view-panel hidden">
+          <!-- Smart Listing Paste -->
+          <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(0,245,255,0.2); border-radius:var(--radius-lg); padding:2rem; margin-bottom:2rem; box-shadow:0 0 24px rgba(0,245,255,0.05);">
+            <h3 style="color:#fff; margin-bottom:0.5rem; display:flex; align-items:center; gap:0.5rem;">
+              <span>✨</span> Smart Listing Paste
+            </h3>
+            <p style="color:var(--text-muted); font-size:13.5px; margin-bottom:1.5rem;">
+              Use the AI engine to parse unstructured text (emails, WhatsApp, property descriptions) directly into clean database columns.
+            </p>
+            
+            <div class="form-group" style="margin-bottom:1.5rem;">
+              <textarea id="paste-textarea" class="textarea" style="min-height:180px; border-color:rgba(0,245,255,0.25); background:rgba(0,0,0,0.2); font-family:var(--font-mono, monospace); font-size:13px; padding:1rem; border-radius:12px;" placeholder="Paste any property listing here — messy text, WhatsApp forwards, Property Finder copy — AI will extract everything automatically."></textarea>
+            </div>
+            
+            <div style="display:flex; gap:1rem;">
+              <button id="btn-extract" class="btn btn-primary" style="padding:0.75rem 1.5rem;">
+                ⚡ Extract Listings with AI
+              </button>
+              <button id="btn-clear" class="btn btn-outline" style="padding:0.75rem 1.5rem;">
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview & Save Area -->
+          <div id="preview-area" class="hidden" style="margin-top:2rem;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:1rem;">
+              <div>
+                <h3 style="color:#fff;">Extracted Preview (<span id="preview-count">0</span> listings found)</h3>
+                <p style="color:var(--text-muted); font-size:12.5px;">Verify the parsed columns below before confirming to save.</p>
+              </div>
+              <button id="btn-save-all" class="btn btn-primary" style="box-shadow: 0 0 16px rgba(0,245,255,0.2); background:rgba(0,255,136,0.1); border-color:#00ff88; color:#00ff88;">
+                📥 Save All to Listings
+              </button>
+            </div>
+            
+            <div id="preview-cards-container" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:1.25rem; margin-bottom:2rem;">
+              <!-- Cards dynamic injection -->
+            </div>
+          </div>
+
+          <!-- Existing Listings Table -->
+          <div class="table-container">
+            <div class="table-header">
+              <div>
+                <h3>All Active Listings</h3>
+                <p>Properties currently stored in your database</p>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="leads-table">
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Title</th>
+                    <th>Area</th>
+                    <th>Price</th>
+                    <th>Beds</th>
+                    <th>Description</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="properties-tbody">
+                  <tr>
+                    <td colspan="7" class="empty-state">Loading active properties...</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div><!-- /panel-properties -->
 
       </div><!-- /dashboard-content -->
     </main>
