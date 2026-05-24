@@ -36,10 +36,13 @@ async function parseListingsWithGemini(rawText) {
 
 router.post('/login', (req, res) => {
     const { username, password } = req.body;
-    const adminUser = process.env.ADMIN_USERNAME || 'admin';
-    const adminPass = process.env.ADMIN_PASSWORD || 'admin123';
+    const adminUser = (process.env.ADMIN_USERNAME || 'admin').trim();
+    const adminPass = (process.env.ADMIN_PASSWORD || 'admin123').trim();
     
-    if (username === adminUser && password === adminPass) {
+    const inputUser = (username || '').trim();
+    const inputPass = (password || '').trim();
+    
+    if (inputUser === adminUser && inputPass === adminPass) {
         res.json({ success: true });
     } else {
         res.status(401).json({ error: 'Invalid credentials' });
