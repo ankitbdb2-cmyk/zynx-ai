@@ -360,6 +360,16 @@ router.delete('/properties/:id', (req, res) => {
     }
 });
 
+router.delete('/properties/all', (req, res) => {
+    try {
+        db.prepare(`DELETE FROM properties`).run();
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Failed to delete all properties:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // ─── Settings ───────────────────────────────────────────────────────────────
 router.get('/settings', (req, res) => {
     try {

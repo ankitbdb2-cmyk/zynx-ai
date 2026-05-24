@@ -170,27 +170,7 @@ function initDb() {
     console.log(`  PERSISTENCE CHECK: ${propertyCount} properties, ${leadCount} leads`);
     console.log('────────────────────────────────────────────────────────────');
 
-    const seedFlag = db.prepare(`SELECT value FROM _meta WHERE key = 'seed_completed'`).get();
-
-    if (propertyCount === 0 && !seedFlag) {
-        console.log('  ⚠ Empty properties table — first-time seed ONLY...');
-        const seedData = [
-            ['Rent', 'Studio', 'International City', 'AED 28,000/yr', 'Studio', 'Budget friendly', 'Available now'],
-            ['Rent', 'Studio', 'Dubai Marina', 'AED 65,000/yr', 'Studio', 'Sea view', 'Available now'],
-            ['Rent', '1BR', 'Dubai Silicon Oasis', 'AED 45,000/yr', '1BR', 'Tech hub area', 'Available now'],
-            ['Sale', 'Studio', 'JVC', 'AED 450,000', 'Studio', 'High ROI investment', 'Available now'],
-            ['Sale', '1BR', 'Dubai Marina', 'AED 950,000', '1BR', 'Sea view, ready to move', 'Available now']
-        ];
-        const stmt = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`);
-        const insertMany = db.transaction((rows) => { for (const p of rows) stmt.run(p); });
-        insertMany(seedData);
-        db.prepare(`INSERT INTO _meta (key, value) VALUES ('seed_completed', ?)`).run(new Date().toISOString());
-        persistenceInfo.seeded = true;
-        persistenceInfo.propertyCount = seedData.length;
-        console.log(`  ✓ Seeded ${seedData.length} properties (first run only).`);
-    } else {
-        console.log(`  ✓ DATA PRESERVED — ${propertyCount} properties, ${leadCount} leads. No overwrite.`);
-    }
+    console.log(`  ✓ DATA PRESERVED — ${propertyCount} properties, ${leadCount} leads. No overwrite.`);
 
     const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
     if (!agencyRow) {

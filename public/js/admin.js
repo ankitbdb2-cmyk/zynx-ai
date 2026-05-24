@@ -368,6 +368,23 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  /* ── Delete All Listings ────────────────────────── */
+  document.getElementById('btn-delete-all').addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to delete ALL listings? This cannot be undone.')) return;
+    if (!confirm('⚠️ FINAL WARNING: This will permanently erase every property from the database.')) return;
+    try {
+      const res = await fetch('/api/admin/properties/all', { method: 'DELETE' });
+      if (res.ok) {
+        alert('All listings deleted successfully.');
+        loadDashboard();
+      } else {
+        alert('Failed to delete all listings.');
+      }
+    } catch {
+      alert('Failed to connect to server.');
+    }
+  });
+
   /* ── Escaping ─────────────────────────────────── */
   function esc(str) {
     return String(str)
