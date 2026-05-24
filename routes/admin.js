@@ -27,7 +27,7 @@ Rules:
 async function parseListingsWithGemini(rawText) {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL || 'gemini-2.0-flash',
+        model: 'gemini-2.0-flash',
         generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
     });
     const result = await model.generateContent(`${PARSE_LISTINGS_PROMPT}\n\n---\nPASTED TEXT:\n${rawText}`);
@@ -255,7 +255,7 @@ router.post('/properties', (req, res) => {
 });
 
 // ─── Smart Paste — AI extract from Property Finder text ─────────────────────
-router.post('/properties/parse-paste', async (req, res) => {
+async function handleExtractListings(req, res) {
     const { rawText } = req.body;
     if (!rawText || !String(rawText).trim()) {
         return res.status(400).json({ error: 'rawText required' });
@@ -266,14 +266,32 @@ router.post('/properties/parse-paste', async (req, res) => {
 
     try {
         const text = (await parseListingsWithGemini(String(rawText).trim())).trim();
-        const jsonStart = text.indexOf('{');
-        const jsonEnd = text.lastIndexOf('}');
-        if (jsonStart === -1 || jsonEnd === -1) {
-            return res.status(422).json({ error: 'AI could not parse listings. Try pasting more detail.' });
+        let parsed;
+        try {
+            // Robust JSON extraction
+            const jsonStart = text.indexOf('{');
+            const jsonEnd = text.lastIndexOf('}');
+            if (jsonStart === -1 || jsonEnd === -1) {
+                // Check if it returned a raw array
+                const arrStart = text.indexOf('[');
+                const arrEnd = text.lastIndexOf(']');
+                if (arrStart === -1 || arrEnd === -1) {
+                    throw new Error('No JSON object or array found in response');
+                }
+                const list = JSON.parse(text.slice(arrStart, arrEnd + 1));
+                parsed = { listings: list };
+            } else {
+                parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
+            }
+        } catch (parseErr) {
+            console.error('Failed to parse JSON from response text:', text);
+            return res.status(422).json({ error: 'AI returned invalid JSON formatting: ' + parseErr.message });
         }
 
-        const parsed = JSON.parse(text.slice(jsonStart, jsonEnd + 1));
-        const listings = (parsed.listings || []).map(l => ({
+        const rawListings = parsed.listings || parsed;
+        const listingsArray = Array.isArray(rawListings) ? rawListings : [rawListings];
+
+        const listings = listingsArray.map(l => ({
             type: l.type === 'Sale' ? 'Sale' : 'Rent',
             title: l.title || 'Property',
             area: l.area || 'Dubai',
@@ -288,7 +306,10 @@ router.post('/properties/parse-paste', async (req, res) => {
         console.error('Parse paste error:', err.message);
         res.status(500).json({ error: 'Failed to parse listings: ' + err.message });
     }
-});
+}
+
+router.post('/properties/parse-paste', handleExtractListings);
+router.post('/extract-listings', handleExtractListings);
 
 router.post('/properties/bulk', (req, res) => {
     const { listings } = req.body;
