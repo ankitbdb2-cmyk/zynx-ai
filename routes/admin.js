@@ -1,7 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../database');
+
+const anthropic = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY
+});
 
 const PARSE_LISTINGS_PROMPT = `You extract Dubai real estate listings from unstructured paste text (Property Finder, Bayut, emails, WhatsApp, etc.).
 Return ONLY valid JSON — no markdown, no explanation:
@@ -24,14 +28,15 @@ Rules:
 - Never invent properties not in the text.
 - If a field is missing, use best guess from context or "—".`;
 
-async function parseListingsWithGemini(rawText) {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
-        generationConfig: { temperature: 0.2, maxOutputTokens: 4096 }
+async function parseListingsWithClaude(rawText) {
+    const response = await anthropic.messages.create({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 4000,
+        temperature: 0.2,
+        system: PARSE_LISTINGS_PROMPT,
+        messages: [{ role: 'user', content: `PASTED TEXT:\n${rawText}` }]
     });
-    const result = await model.generateContent(`${PARSE_LISTINGS_PROMPT}\n\n---\nPASTED TEXT:\n${rawText}`);
-    return result.response.text();
+    return response.content[0].text;
 }
 
 router.post('/login', (req, res) => {
@@ -260,12 +265,12 @@ async function handleExtractListings(req, res) {
     if (!rawText || !String(rawText).trim()) {
         return res.status(400).json({ error: 'rawText required' });
     }
-    if (!process.env.GEMINI_API_KEY) {
-        return res.status(500).json({ error: 'GEMINI_API_KEY not configured. Get a free key at https://aistudio.google.com/apikey' });
+    if (!process.env.ANTHROPIC_API_KEY) {
+        return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured. Please set sk-ant key in environment settings.' });
     }
 
     try {
-        const text = (await parseListingsWithGemini(String(rawText).trim())).trim();
+        const text = (await parseListingsWithClaude(String(rawText).trim())).trim();
         let parsed;
         try {
             // Robust JSON extraction
