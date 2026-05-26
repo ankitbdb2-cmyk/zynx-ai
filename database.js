@@ -122,6 +122,8 @@ function initDb() {
         { col: 'viewing_offer_sent', def: 'INTEGER DEFAULT 0' },
         { col: 'viewing_confirmed', def: 'INTEGER DEFAULT 0' },
         { col: 'viewing_slot_id', def: 'INTEGER' },
+        { col: 'language', def: "TEXT DEFAULT 'English'" },
+        { col: 'transcription_cost', def: 'REAL DEFAULT 0' },
     ];
     for (const m of leadMigrations) {
         try { db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }

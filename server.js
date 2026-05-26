@@ -67,10 +67,16 @@ app.use(express.static(path.join(__dirname, 'public')));
 const ghostRoutes = require('./routes/ghost');
 const closerRoutes = require('./routes/closer');
 const adminRoutes = require('./routes/admin');
+const whatsappRoutes = require('./routes/whatsapp');
+const { scheduleMorningSummary } = require('./services/scheduler');
 
 app.use('/api/ghost', ghostRoutes);
 app.use('/api/closer', closerRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
+
+// ─── Start daily morning summary scheduler ─────────────────────────────────
+scheduleMorningSummary();
 
 app.listen(PORT, () => {
     const p = db.getPersistenceInfo();
