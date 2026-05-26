@@ -23,8 +23,7 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "nodemailer": "^8.0.6",
-    "openai": "^4.104.0"
+    "nodemailer": "^8.0.6"
   },
   "devDependencies": {
     "puppeteer": "^25.0.4"
