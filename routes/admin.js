@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../database');
+const { launchPVIL } = require('../services/post-viewing');
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -395,6 +396,33 @@ router.post('/settings', (req, res) => {
         console.error('Failed to update setting:', err);
         res.status(500).json({ error: 'Database error' });
     }
+});
+
+// ─── PVIL: Admin — Mark Viewing Complete ────────────────────────────────────
+router.post('/leads/:id/complete-viewing', (req, res) => {
+    const leadId = parseInt(req.params.id);
+    const noShow = req.body.no_show === true || req.body.no_show === 'true';
+
+    if (!leadId) {
+        return res.status(400).json({ error: 'Invalid lead ID' });
+    }
+
+    const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId);
+
+    if (!lead) {
+        return res.status(404).json({ error: 'Lead not found' });
+    }
+
+    if (noShow) {
+        db.prepare(`UPDATE leads SET no_show = 1, status = 'No Show' WHERE id = ?`).run(leadId);
+        return res.json({ success: true, pvil_launched: false, status: 'No Show' });
+    }
+
+    db.prepare(`UPDATE leads SET completed_at = datetime('now'), status = 'Viewing Completed' WHERE id = ?`).run(leadId);
+
+    const { alreadyLaunched } = launchPVIL(db, leadId);
+
+    return res.json({ success: true, pvil_launched: !alreadyLaunched, status: 'Viewing Completed' });
 });
 
 module.exports = router;

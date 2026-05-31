@@ -7,6 +7,7 @@ const { detectLanguage, translateToEnglish } = require('../services/language');
 const { assessLead } = require('../services/scorer');
 const { sendReply, sendHotAlert } = require('../services/whatsapp');
 const logger = require('../services/logger');
+const { cancelPVIL } = require('../services/post-viewing');
 
 // WhatsApp providers (Twilio, etc.) send form-urlencoded webhooks
 router.use(express.urlencoded({ extended: false }));
@@ -297,6 +298,13 @@ router.post('/webhook', async (req, res) => {
 
         const from = From || req.body.from || 'unknown';
         logger.logEvent('whatsapp', { action: 'webhook_received', from, hasMedia: NumMedia > 0 });
+
+        // PVIL auto-cancel: if lead replies during active sequence, stop it
+        const existingLead = db.prepare('SELECT * FROM leads WHERE phone = ?').get(from);
+        if (existingLead && !['pending', 'engaged', 'complete'].includes(existingLead.pv_state)) {
+            cancelPVIL(db, existingLead.id);
+            console.log(`[PVIL] Sequence cancelled for lead ${existingLead.id} — inbound reply received`);
+        }
 
         let userText = '';
         let isVoice = false;

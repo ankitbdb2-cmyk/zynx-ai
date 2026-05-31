@@ -165,6 +165,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     leads.forEach(lead => {
+      console.log('Lead status value:', lead.status, '| Type:', typeof lead.status);
       const tr  = document.createElement('tr');
       const d   = new Date(lead.date);
       const dateStr = isNaN(d)
@@ -188,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <td class="lead-phone">${esc(lead.phone || '—')}</td>
         <td class="lead-budget">${esc(lead.budget || '—')}</td>
         <td><div class="psych-note" title="${esc(lead.psychology_notes || '')}">${esc(lead.psychology_notes || '—')}</div></td>
-        <td>
+        <td data-lead-id="${lead.id}">
           <select class="status-select" data-id="${lead.id}">
             <option value="New"            ${lead.status === 'New'            ? 'selected' : ''}>🔵 New</option>
             <option value="Contacted"      ${lead.status === 'Contacted'      ? 'selected' : ''}>🟡 Contacted</option>
@@ -196,6 +197,11 @@ document.addEventListener('DOMContentLoaded', () => {
             <option value="Closed"         ${lead.status === 'Closed'         ? 'selected' : ''}>🟢 Closed</option>
             <option value="Dead"           ${lead.status === 'Dead'           ? 'selected' : ''}>⚫ Dead</option>
           </select>
+          ${lead.status === 'Visit Scheduled' ? `
+          <div id="pvil-buttons-${lead.id}" style="display:flex; gap:4px; margin-top:6px;">
+            <button class="btn-pvil-complete" data-lead-id="${lead.id}" style="padding:2px 8px; font-size:11px; border-radius:4px; background:rgba(0,255,136,0.12); border:1px solid rgba(0,255,136,0.3); color:#00ff88; cursor:pointer;">✅ Complete</button>
+            <button class="btn-pvil-noshow" data-lead-id="${lead.id}" style="padding:2px 8px; font-size:11px; border-radius:4px; background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.3); color:#ef4444; cursor:pointer;">❌ No Show</button>
+          </div>` : ''}
         </td>
       `;
       tbodyLeads.appendChild(tr);
@@ -214,6 +220,49 @@ document.addEventListener('DOMContentLoaded', () => {
           loadDashboard();
         } catch {
           alert('Failed to update status. Please try again.');
+        }
+      });
+    });
+
+    // PVIL — Mark Complete / No Show buttons
+    tbodyLeads.querySelectorAll('.btn-pvil-complete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-lead-id');
+        document.querySelectorAll(`.btn-pvil-complete[data-lead-id="${id}"], .btn-pvil-noshow[data-lead-id="${id}"]`).forEach(b => b.disabled = true);
+        try {
+          const res = await fetch(`/api/admin/leads/${id}/complete-viewing`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ no_show: false })
+          });
+          if (res.ok) {
+            loadDashboard();
+          } else {
+            alert('Failed to update viewing status.');
+          }
+        } catch {
+          alert('Failed to connect to server.');
+        }
+      });
+    });
+
+    tbodyLeads.querySelectorAll('.btn-pvil-noshow').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.target.getAttribute('data-lead-id');
+        document.querySelectorAll(`.btn-pvil-complete[data-lead-id="${id}"], .btn-pvil-noshow[data-lead-id="${id}"]`).forEach(b => b.disabled = true);
+        try {
+          const res = await fetch(`/api/admin/leads/${id}/complete-viewing`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ no_show: true })
+          });
+          if (res.ok) {
+            loadDashboard();
+          } else {
+            alert('Failed to update viewing status.');
+          }
+        } catch {
+          alert('Failed to connect to server.');
         }
       });
     });

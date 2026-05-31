@@ -1,6 +1,7 @@
 const db = require('../database');
 const logger = require('./logger');
 const { sendText } = require('./whatsapp');
+const { checkAndFireSteps } = require('./post-viewing');
 
 const AGENT_NUMBER = process.env.AGENT_WHATSAPP_NUMBER || '';
 
@@ -95,5 +96,17 @@ function scheduleMorningSummary() {
         setInterval(sendMorningSummary, 86400000);
     }, delayMs);
 }
+
+// ─── PVIL — check and fire post-viewing steps every 30 minutes ──────────────
+setInterval(() => {
+    try {
+        const result = checkAndFireSteps(db);
+        if (result.fired > 0) {
+            console.log(`[PVIL] Steps fired: ${result.fired} of ${result.processed} leads checked`);
+        }
+    } catch (err) {
+        console.error('[PVIL scheduler error]', err);
+    }
+}, 30 * 60 * 1000);
 
 module.exports = { scheduleMorningSummary, sendMorningSummary, generateMorningSummary };

@@ -3,6 +3,7 @@ const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../database');
 const nodemailer = require('nodemailer');
+const { launchPVIL } = require('../services/post-viewing');
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -377,6 +378,105 @@ router.post('/confirm-viewing', (req, res) => {
     } catch (err) {
         console.error('Confirm viewing error:', err);
         res.status(500).json({ error: 'Failed to confirm viewing' });
+    }
+});
+
+// ─── PVIL: Mark Viewing Complete ───────────────────────────────────────────
+router.post('/complete-viewing', (req, res) => {
+    const { lead_id, no_show } = req.body;
+
+    if (!lead_id) {
+        return res.status(400).json({ error: 'lead_id required' });
+    }
+
+    try {
+        const lead = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(lead_id);
+
+        if (!lead) {
+            return res.status(404).json({ error: 'Lead not found' });
+        }
+
+        if (no_show) {
+            db.prepare(`UPDATE leads SET no_show = 1, status = 'No Show' WHERE id = ?`).run(lead_id);
+
+            if (process.env.AGENT_EMAIL && process.env.EMAIL_PASSWORD) {
+                const transporter = nodemailer.createTransport({
+                    service: 'gmail',
+                    auth: {
+                        user: process.env.AGENT_EMAIL,
+                        pass: process.env.EMAIL_PASSWORD
+                    }
+                });
+                transporter.sendMail({
+                    from: `"PVIL System" <${process.env.AGENT_EMAIL}>`,
+                    to: process.env.AGENT_EMAIL,
+                    subject: `No Show: ${lead.name}`,
+                    text:
+`Lead: ${lead.name}
+Phone: ${lead.phone || 'not recorded'}
+Score: ${lead.hot_score} | Stage: ${lead.lead_stage}
+
+${lead.name} did not attend their scheduled viewing.
+
+NEXT STEP:
+Wait 24 hours. Then reach out with a low-pressure reschedule offer:
+"No problem at all — happy to arrange another time when it suits you better."
+
+Do not express frustration. Do not drop the lead yet.
+No Show leads re-engage at ~25% with a single patient follow-up.
+
+PVIL sequence was NOT launched for this lead.`
+                }, (err) => { if (err) console.error('[PVIL email fail]', err); });
+            }
+
+            return res.json({ success: true, pvil_launched: false, status: 'No Show' });
+        }
+
+        db.prepare(`UPDATE leads SET completed_at = datetime('now'), status = 'Viewing Completed' WHERE id = ?`).run(lead_id);
+
+        const { alreadyLaunched } = launchPVIL(db, lead_id);
+
+        if (process.env.AGENT_EMAIL && process.env.EMAIL_PASSWORD) {
+            const transporter = nodemailer.createTransport({
+                service: 'gmail',
+                auth: {
+                    user: process.env.AGENT_EMAIL,
+                    pass: process.env.EMAIL_PASSWORD
+                }
+            });
+            transporter.sendMail({
+                from: `"PVIL System" <${process.env.AGENT_EMAIL}>`,
+                to: process.env.AGENT_EMAIL,
+                subject: `Viewing Complete: ${lead.name} — PVIL Active`,
+                text:
+`Lead: ${lead.name}
+Phone: ${lead.phone || 'not recorded'}
+Score: ${lead.hot_score} | Stage: ${lead.lead_stage}
+Budget: ${lead.budget || 'not recorded'}
+Nationality: ${lead.nationality || 'not recorded'}
+
+Viewing marked complete. PVIL sequence is now running.
+
+WHAT HAPPENS NEXT (automated — no action needed from you):
+  T+2h  → Re-engagement WhatsApp sent to lead
+  T+24h → Competitive positioning script sent to you
+  T+48h → Golden Visa or value script sent to you
+  T+72h → Nationality-calibrated closing script sent to you
+
+Each step fires only if the lead has not responded.
+If they reply at any point — the sequence stops automatically.
+
+${alreadyLaunched ? '⚠️  NOTE: PVIL was already running for this lead. Sequence continues from current position.' : '✅ PVIL sequence started fresh.'}
+
+Your only job right now: do nothing. Let Step 1 land first.`
+            }, (err) => { if (err) console.error('[PVIL email fail]', err); });
+        }
+
+        return res.json({ success: true, pvil_launched: !alreadyLaunched, status: 'Viewing Completed' });
+
+    } catch (err) {
+        console.error('[PVIL /complete-viewing error]', err);
+        return res.status(500).json({ error: 'Failed to process viewing completion' });
     }
 });
 

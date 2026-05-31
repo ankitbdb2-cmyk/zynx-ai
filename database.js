@@ -124,6 +124,11 @@ function initDb() {
         { col: 'viewing_slot_id', def: 'INTEGER' },
         { col: 'language', def: "TEXT DEFAULT 'English'" },
         { col: 'transcription_cost', def: 'REAL DEFAULT 0' },
+        { col: 'completed_at', def: 'DATETIME DEFAULT NULL' },
+        { col: 'no_show', def: 'INTEGER DEFAULT 0' },
+        { col: 'pv_state', def: "TEXT DEFAULT 'pending'" },
+        { col: 'pv_launched_at', def: 'DATETIME DEFAULT NULL' },
+        { col: 'nationality', def: "TEXT DEFAULT ''" },
     ];
     for (const m of leadMigrations) {
         try { db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }
