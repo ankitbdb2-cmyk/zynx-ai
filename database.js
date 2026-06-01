@@ -129,6 +129,9 @@ function initDb() {
         { col: 'pv_state', def: "TEXT DEFAULT 'pending'" },
         { col: 'pv_launched_at', def: 'DATETIME DEFAULT NULL' },
         { col: 'nationality', def: "TEXT DEFAULT ''" },
+        { col: 'silence_detected_at', def: 'INTEGER' },
+        { col: 'silence_alerted_at', def: 'INTEGER' },
+        { col: 'last_reply_at', def: 'INTEGER' },
     ];
     for (const m of leadMigrations) {
         try { db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }
@@ -167,6 +170,46 @@ function initDb() {
             key TEXT PRIMARY KEY, value TEXT NOT NULL
         )
     `).run();
+
+    try {
+        db.prepare(`CREATE TABLE IF NOT EXISTS launches (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            developer   TEXT NOT NULL,
+            project     TEXT NOT NULL,
+            payment_plan     TEXT DEFAULT '',
+            handover_date    TEXT DEFAULT '',
+            price_floor      INTEGER DEFAULT 0,
+            golden_visa      INTEGER DEFAULT 0,
+            roi_projection   TEXT DEFAULT '',
+            notes            TEXT DEFAULT '',
+            active           INTEGER DEFAULT 0,
+            expires_at       TEXT DEFAULT NULL,
+            created_at       TEXT DEFAULT (datetime('now'))
+        )`).run();
+    } catch(e) { /* table exists */ }
+
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS silence_profiles (
+            id              INTEGER  PRIMARY KEY AUTOINCREMENT,
+            lead_id         INTEGER  NOT NULL REFERENCES leads(id),
+            generated_at    INTEGER  NOT NULL,
+            fear            TEXT     NOT NULL,
+            what_not_to_do  TEXT     NOT NULL,
+            counter_move    TEXT     NOT NULL,
+            stage           TEXT,
+            nationality     TEXT,
+            budget          INTEGER,
+            dismissed       INTEGER  DEFAULT 0,
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+
+    db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_silence_lead
+            ON silence_profiles(lead_id);
+        CREATE INDEX IF NOT EXISTS idx_silence_dismissed
+            ON silence_profiles(dismissed)
+    `);
 
     const propertyCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
     const leadCount = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
@@ -218,4 +261,20 @@ db.isReady = () => dbReady;
 db.getPersistenceInfo = () => ({ ...persistenceInfo, ready: dbReady });
 db.dbPath = dbPath;
 
-module.exports = db;
+function parseBudget(str) {
+  if (!str) return 0;
+  const s = String(str).toLowerCase().trim();
+
+  // Handle shorthand: 1.2M → 1200000, 2.5m → 2500000, 500k → 500000
+  const mMatch = s.match(/([\d.]+)\s*m/);
+  if (mMatch) return Math.round(parseFloat(mMatch[1]) * 1_000_000);
+
+  const kMatch = s.match(/([\d.]+)\s*k/);
+  if (kMatch) return Math.round(parseFloat(kMatch[1]) * 1_000);
+
+  // Strip non-numeric except dot, parse as number
+  const numeric = parseFloat(s.replace(/[^0-9.]/g, ''));
+  return isNaN(numeric) ? 0 : Math.round(numeric);
+}
+
+module.exports = { db, parseBudget };

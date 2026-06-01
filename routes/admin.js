@@ -3,6 +3,10 @@ const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../database');
 const { launchPVIL } = require('../services/post-viewing');
+const { activateLaunch, deactivateLaunch, extendLaunch,
+        getLaunchMode } = require('../services/launch-mode');
+const { parseBudget } = require('../database');
+const { getSilenceProfiles, dismissProfile } = require('../services/silence-decoder');
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -424,5 +428,89 @@ router.post('/leads/:id/complete-viewing', (req, res) => {
 
     return res.json({ success: true, pvil_launched: !alreadyLaunched, status: 'Viewing Completed' });
 });
+
+// ── LAUNCH MODE ROUTES ────────────────────────────────────────────────────
+
+router.post('/launches', (req, res) => {
+    const {
+        developer, project, payment_plan, handover_date,
+        price_floor, golden_visa, roi_projection, notes
+    } = req.body;
+
+    if (!developer || !project) {
+        return res.status(400).json({ error: 'developer and project are required' });
+    }
+
+    const launch = activateLaunch(db, {
+        developer,
+        project,
+        payment_plan: payment_plan || '',
+        handover_date: handover_date || '',
+        price_floor: parseBudget(price_floor) || parseInt(price_floor) || 0,
+        golden_visa: golden_visa ? 1 : 0,
+        roi_projection: roi_projection || '',
+        notes: notes || ''
+    });
+
+    return res.json({ success: true, launch });
+});
+
+router.get('/launches/active', (req, res) => {
+    const launch = getLaunchMode(db);
+    if (!launch) return res.json({ active: false });
+    return res.json({ active: true, launch });
+});
+
+router.get('/launches', (req, res) => {
+    const launches = db.prepare(
+        'SELECT * FROM launches ORDER BY created_at DESC'
+    ).all();
+    return res.json({ launches });
+});
+
+router.post('/launches/:id/deactivate', (req, res) => {
+    const launchId = parseInt(req.params.id);
+    if (!launchId) return res.status(400).json({ error: 'Invalid launch ID' });
+    const result = deactivateLaunch(db, launchId);
+    return res.json({ success: true, ...result });
+});
+
+router.post('/launches/:id/extend', (req, res) => {
+    const launchId = parseInt(req.params.id);
+    const hours = parseInt(req.body.hours) || 24;
+    if (!launchId) return res.status(400).json({ error: 'Invalid launch ID' });
+    const result = extendLaunch(db, launchId, hours);
+    return res.json({ success: true, ...result });
+});
+
+// ── END LAUNCH MODE ROUTES ────────────────────────────────────────────────
+
+// ── SILENCE DECODER ROUTES ──────────────────────────────────────────────────
+
+router.get('/silence-profiles', (req, res) => {
+    const profiles = getSilenceProfiles(db);
+    return res.json({ profiles });
+});
+
+router.post('/silence-profiles/:id/dismiss', (req, res) => {
+    const profileId = parseInt(req.params.id);
+    if (!profileId) return res.status(400).json({ error: 'Invalid profile ID' });
+    const result = dismissProfile(db, profileId);
+    return res.json({ success: true, ...result });
+});
+
+router.get('/leads/:id/silence-profile', (req, res) => {
+    const leadId = parseInt(req.params.id);
+    if (!leadId) return res.status(400).json({ error: 'Invalid lead ID' });
+    const profile = db.prepare(`
+        SELECT * FROM silence_profiles
+        WHERE lead_id = ? AND dismissed = 0
+        ORDER BY generated_at DESC
+        LIMIT 1
+    `).get(leadId);
+    return res.json({ profile: profile || null });
+});
+
+// ── END SILENCE DECODER ROUTES ──────────────────────────────────────────────
 
 module.exports = router;

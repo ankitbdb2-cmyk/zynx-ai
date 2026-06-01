@@ -2,6 +2,8 @@ const db = require('../database');
 const logger = require('./logger');
 const { sendText } = require('./whatsapp');
 const { checkAndFireSteps } = require('./post-viewing');
+const { checkAndExpireLaunches, getLaunchMode } = require('./launch-mode');
+const { checkSilentLeads } = require('./silence-decoder');
 
 const AGENT_NUMBER = process.env.AGENT_WHATSAPP_NUMBER || '';
 
@@ -107,6 +109,28 @@ setInterval(() => {
     } catch (err) {
         console.error('[PVIL scheduler error]', err);
     }
+
+    // LAUNCH MODE: auto-expire stale launches
+    try {
+        const expireResult = checkAndExpireLaunches(db);
+        if (expireResult.expired > 0) {
+            console.log(`[Launch Mode] ${expireResult.expired} launch(es) auto-expired`);
+        }
+    } catch (launchExpireErr) {
+        console.error('[Launch Mode expire error]', launchExpireErr);
+    }
+
+    // LAUNCH MODE: 30-minute live summary refresh when launch is active
+    try {
+        const activeLaunch = getLaunchMode(db);
+        if (activeLaunch) {
+            sendMorningSummary();
+        }
+    } catch (launchRefreshErr) {
+        console.error('[Launch Mode refresh error]', launchRefreshErr);
+    }
+
+    checkSilentLeads(db).catch(() => {});
 }, 30 * 60 * 1000);
 
 module.exports = { scheduleMorningSummary, sendMorningSummary, generateMorningSummary };

@@ -4,6 +4,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const db = require('../database');
 const nodemailer = require('nodemailer');
 const { launchPVIL } = require('../services/post-viewing');
+const { getLaunchMode, buildLaunchOverlay } = require('../services/launch-mode');
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -156,6 +157,12 @@ signals — list any that apply:
 recommended_action: one specific sentence telling the agent what to do next.
 
 collected: fill in what has been shared so far. Leave as empty string if not yet known.`;
+
+        // LAUNCH MODE: inject project overlay when active
+        const activeLaunch = getLaunchMode(db);
+        if (activeLaunch) {
+            systemPrompt += '\n\n' + buildLaunchOverlay(activeLaunch);
+        }
 
         const response = await anthropic.messages.create({
             model: 'claude-sonnet-4-5',

@@ -8,6 +8,8 @@ const { assessLead } = require('../services/scorer');
 const { sendReply, sendHotAlert } = require('../services/whatsapp');
 const logger = require('../services/logger');
 const { cancelPVIL } = require('../services/post-viewing');
+const { getLaunchMode, buildLaunchOverlay } = require('../services/launch-mode');
+const { updateLastReply } = require('../services/silence-decoder');
 
 // WhatsApp providers (Twilio, etc.) send form-urlencoded webhooks
 router.use(express.urlencoded({ extended: false }));
@@ -58,6 +60,8 @@ async function finalizeAndScore(from, session) {
         translatedName = await translateToEnglish(session.leadProfile.name);
     }
 
+    // NIM: inject language signal into lead profile before scoring
+    session.leadProfile.detectedLanguage = session.detectedLanguage || null;
     const scoring = assessLead(session.messages, session.leadProfile);
 
     const leadPayload = {
@@ -87,6 +91,22 @@ async function finalizeAndScore(from, session) {
             leadPayload.area, leadPayload.bedrooms, '', leadPayload.psychology_notes
         );
         logger.logEvent('scorer', { action: 'lead_saved', from, name: leadPayload.name, score: scoring.hot_score });
+
+        // NIM: write detected nationality to DB for PVIL Step 4 + NIM logging
+        if (session.detectedLanguage && session.detectedLanguage.code !== 'en') {
+            const nationalityMap = {
+                'zh': 'Chinese', 'zh-cn': 'Chinese', 'zh-tw': 'Chinese', 'zh-hk': 'Chinese',
+                'ru': 'Russian', 'uk': 'Russian/CIS', 'kk': 'Russian/CIS', 'uz': 'Russian/CIS',
+                'hi': 'Indian', 'ur': 'Pakistani', 'bn': 'Indian',
+                'ta': 'Indian', 'te': 'Indian', 'gu': 'Indian', 'pa': 'Indian',
+                'ar': 'Arabic/Gulf', 'fa': 'Arabic/Gulf',
+                'fr': 'French', 'de': 'German', 'zh-hans': 'Chinese'
+            };
+            const detectedNationality = nationalityMap[session.detectedLanguage.code] ||
+                                         session.detectedLanguage.name;
+            db.prepare(`UPDATE leads SET nationality = ? WHERE phone = ?`)
+              .run(detectedNationality, leadPayload.phone);
+        }
     } catch (err) {
         logger.logEvent('scorer', { action: 'save_error', from, error: err.message });
     }
@@ -260,6 +280,12 @@ async function processMessage(from, userText, isVoice = false, transcriptionCost
         session.detectedLanguage.name
     );
 
+    // LAUNCH MODE: inject project overlay when active
+    const activeLaunch = getLaunchMode(db);
+    if (activeLaunch) {
+        systemPrompt += '\n\n' + buildLaunchOverlay(activeLaunch);
+    }
+
     const claudeMessages = session.messages.map(m => ({
         role: m.role,
         content: m.content
@@ -304,6 +330,10 @@ router.post('/webhook', async (req, res) => {
         if (existingLead && !['pending', 'engaged', 'complete'].includes(existingLead.pv_state)) {
             cancelPVIL(db, existingLead.id);
             console.log(`[PVIL] Sequence cancelled for lead ${existingLead.id} — inbound reply received`);
+        }
+
+        if (existingLead) {
+            updateLastReply(db, existingLead.id);
         }
 
         let userText = '';
