@@ -1,4 +1,4 @@
-const db = require('../database');
+const { db } = require('../database');
 const logger = require('./logger');
 const { sendText } = require('./whatsapp');
 const { checkAndFireSteps } = require('./post-viewing');

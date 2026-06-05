@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <button class="ghost-close" id="ghost-close" title="Close">×</button>
         </div>
         <div class="ghost-messages" id="ghost-messages">
-          <div class="message bot">Hi there! I'm Sarah from PropMind. Are you looking for a new property today? 😊</div>
+          <div class="message bot">Hey, I'm Sarah. What are you looking for?</div>
           <div class="typing-indicator" id="ghost-typing">
             <div class="typing-dot"></div>
             <div class="typing-dot"></div>
@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const typing    = document.getElementById('ghost-typing');
 
   let chatHistory = [
-    { role: 'assistant', content: "Hi there! I'm Sarah from PropMind. Are you looking for a new property today? 😊" }
+    { role: 'assistant', content: "Hey, I'm Sarah. What are you looking for?" }
   ];
 
   toggleBtn.addEventListener('click', () => chatWin.classList.toggle('active'));

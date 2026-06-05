@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
-const db = require('../database');
+const { db } = require('../database');
 const { transcribeVoiceNote } = require('../services/transcriber');
 const { detectLanguage, translateToEnglish } = require('../services/language');
 const { assessLead } = require('../services/scorer');
@@ -190,7 +190,7 @@ async function processMessage(from, userText, isVoice = false, transcriptionCost
     }));
 
     const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-5',
+        model: 'claude-sonnet-4-20250514',
         max_tokens: 500,
         temperature: 0.7,
         system: systemPrompt,

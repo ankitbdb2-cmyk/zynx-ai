@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
-const db = require('../database');
+const { db } = require('../database');
 const nodemailer = require('nodemailer');
 const { launchPVIL } = require('../services/post-viewing');
 const { getLaunchMode } = require('../services/launch-mode');
@@ -68,7 +68,7 @@ router.post('/chat', async (req, res) => {
         });
 
         const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-5',
+            model: 'claude-sonnet-4-20250514',
             max_tokens: 500,
             temperature: 0.7,
             system: systemPrompt,
