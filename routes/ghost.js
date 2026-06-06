@@ -75,7 +75,7 @@ router.post('/chat', async (req, res) => {
             messages: messages
         });
 
-        const reply = response.content[0].text;
+        const reply = cleanResponse(response.content[0].text);
         res.json({ reply });
     } catch (error) {
         console.error('Error in ghost chat:', error.message);
@@ -389,5 +389,14 @@ Your only job right now: do nothing. Let Step 1 land first.`
         return res.status(500).json({ error: 'Failed to process viewing completion' });
     }
 });
+
+// ─── Cleanup: strip any JSON/data blocks from Claude before sending to user ──
+function cleanResponse(text) {
+    return text
+        .replace(/\[LEAD_DATA\][^\n]*\n?/gi, '')
+        .replace(/```json[\s\S]*?```/g, '')
+        .replace(/```[\s\S]*?```/g, '')
+        .trim();
+}
 
 module.exports = router;

@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="ghost-header-info">
             <div class="ghost-avatar">S</div>
             <div class="ghost-name-wrap">
-              <h3 class="ghost-name">Sarah — PropMind AI</h3>
+              <h3 class="ghost-name">Sarah</h3>
               <p class="ghost-status">Online now</p>
             </div>
           </div>
@@ -90,32 +90,8 @@ document.addEventListener('DOMContentLoaded', () => {
         input.focus();
 
         if (data.reply) {
-          let botReply = data.reply;
-          let display  = botReply;
-
-          if (botReply.includes('[LEAD_CAPTURED]')) {
-            // Extract JSON block if present
-            const jsonMatch = botReply.match(/```json\n([\s\S]*?)\n```/);
-            if (jsonMatch) {
-              try {
-                const leadData = JSON.parse(jsonMatch[1]);
-                fetch('/api/ghost/save-lead', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(leadData)
-                });
-              } catch (parseErr) {
-                console.error('Lead parse error:', parseErr);
-              }
-            }
-            // Clean the message shown to the user
-            display = botReply
-              .split('[LEAD_CAPTURED]')[0]
-              .replace(/```json[\s\S]*?```/g, '')
-              .trim();
-          }
-
-          appendMessage(display, 'bot');
+          let botReply = cleanBotReply(data.reply);
+          appendMessage(botReply, 'bot');
           chatHistory.push({ role: 'assistant', content: botReply });
         }
       }, delay);
@@ -127,4 +103,13 @@ document.addEventListener('DOMContentLoaded', () => {
       appendMessage("Sorry, I'm having a quick connection issue. Please try again in a moment!", 'bot');
     }
   });
+
+  function cleanBotReply(text) {
+    return text
+      .replace(/\[LEAD_DATA\][\s\S]*?(?=\n|$)/gi, '')
+      .replace(/\[LEAD_CAPTURED\].*/gi, '')
+      .replace(/```json[\s\S]*?```/g, '')
+      .replace(/```[\s\S]*?```/g, '')
+      .trim();
+  }
 });

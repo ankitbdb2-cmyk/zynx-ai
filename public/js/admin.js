@@ -10,8 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Sidebar Nav Tabs
   const navLeads         = document.getElementById('nav-leads');
   const navProperties    = document.getElementById('nav-properties');
+  const navSettings      = document.getElementById('nav-settings');
   const panelLeads       = document.getElementById('panel-leads');
   const panelProperties  = document.getElementById('panel-properties');
+  const panelSettings    = document.getElementById('panel-settings');
 
   // Leads View Elements
   const tbodyLeads       = document.getElementById('leads-tbody');
@@ -89,20 +91,31 @@ document.addEventListener('DOMContentLoaded', () => {
     switchTab('properties');
   });
 
+  navSettings.addEventListener('click', (e) => {
+    e.preventDefault();
+    switchTab('settings');
+  });
+
   function switchTab(tab) {
     activeTab = tab;
+    navLeads.classList.remove('active');
+    navProperties.classList.remove('active');
+    navSettings.classList.remove('active');
+    panelLeads.classList.add('hidden');
+    panelProperties.classList.add('hidden');
+    panelSettings.classList.add('hidden');
     if (tab === 'leads') {
       navLeads.classList.add('active');
-      navProperties.classList.remove('active');
       panelLeads.classList.remove('hidden');
-      panelProperties.classList.add('hidden');
       viewTitle.textContent = 'Leads Dashboard';
-    } else {
-      navLeads.classList.remove('active');
+    } else if (tab === 'properties') {
       navProperties.classList.add('active');
-      panelLeads.classList.add('hidden');
       panelProperties.classList.remove('hidden');
       viewTitle.textContent = 'Properties Management';
+    } else if (tab === 'settings') {
+      navSettings.classList.add('active');
+      panelSettings.classList.remove('hidden');
+      viewTitle.textContent = 'Settings';
     }
     loadDashboard();
   }
@@ -145,10 +158,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('stat-commission').textContent = comm;
 
         renderLeads(leadsData.leads || []);
-      } else {
+      } else if (activeTab === 'properties') {
         const propsRes = await fetch('/api/admin/properties');
         const propsData = await propsRes.json();
         renderProperties(propsData.properties || []);
+      } else if (activeTab === 'settings') {
+        await loadSettings();
       }
       loadLaunchPanel();
       loadSilencePanel();
@@ -445,6 +460,52 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
   }
+
+  /* ── SETTINGS PANEL ───────────────────────────── */
+  async function loadSettings() {
+    const statusEl = document.getElementById('settings-status');
+    try {
+      const res = await fetch('/api/admin/settings');
+      const data = await res.json();
+      const settings = data.settings || {};
+      document.getElementById('agency-name-input').value = settings.agency_name || '';
+      statusEl.textContent = '';
+    } catch (e) {
+      console.error('Failed to load settings:', e);
+      statusEl.textContent = 'Failed to load settings';
+    }
+  }
+
+  document.getElementById('btn-save-settings').addEventListener('click', async () => {
+    const input = document.getElementById('agency-name-input');
+    const value = input.value.trim();
+    const statusEl = document.getElementById('settings-status');
+    if (!value) {
+      statusEl.textContent = 'Please enter an agency name';
+      statusEl.style.color = '#ef4444';
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'agency_name', value })
+      });
+      if (res.ok) {
+        statusEl.textContent = '✅ Saved — changes are live immediately';
+        statusEl.style.color = '#00ff88';
+        // Update live site header if visible
+        const liveHeader = document.querySelector('.hero-title, .agency-name');
+        if (liveHeader) liveHeader.textContent = value;
+      } else {
+        statusEl.textContent = 'Failed to save';
+        statusEl.style.color = '#ef4444';
+      }
+    } catch (e) {
+      statusEl.textContent = 'Server error';
+      statusEl.style.color = '#ef4444';
+    }
+  });
 
   /* ── LAUNCH MODE PANEL ─────────────────────────── */
 

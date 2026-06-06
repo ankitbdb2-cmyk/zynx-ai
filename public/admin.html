@@ -60,6 +60,9 @@
         <a href="/" class="nav-item">
           <span class="nav-item-icon">🌐</span> Live Site
         </a>
+        <a href="#" class="nav-item" id="nav-settings">
+          <span class="nav-item-icon">⚙️</span> Settings
+        </a>
       </nav>
 
       <div class="sidebar-footer">
@@ -219,6 +222,31 @@
             </div>
           </div>
         </div><!-- /panel-properties -->
+
+        <!-- ─── SETTINGS VIEW PANEL ─── -->
+        <div id="panel-settings" class="view-panel hidden">
+          <div class="table-container" style="max-width:640px;">
+            <div class="table-header">
+              <div>
+                <h3>Agency Settings</h3>
+                <p>Edit your agency details — changes take effect immediately</p>
+              </div>
+            </div>
+            <div style="padding:1.5rem 2rem;">
+              <div class="form-group">
+                <label for="agency-name-input" style="font-size:13px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:0.5rem;">Agency Name</label>
+                <input type="text" id="agency-name-input" class="input" style="font-size:18px; font-weight:600; padding:0.85rem 1rem; max-width:480px;" placeholder="Enter your agency name">
+                <p style="font-size:12px; color:var(--text-dim); margin-top:0.5rem;">This name appears on the live site, GHOST chat widget, and AI system prompt.</p>
+              </div>
+              <div style="margin-top:1.5rem;">
+                <button id="btn-save-settings" class="btn btn-primary" style="padding:0.75rem 2rem;">
+                  💾 Save Changes
+                </button>
+                <span id="settings-status" style="margin-left:1rem; font-size:13px; color:var(--text-dim);"></span>
+              </div>
+            </div>
+          </div>
+        </div><!-- /panel-settings -->
 
       </div><!-- /dashboard-content -->
     </main>
