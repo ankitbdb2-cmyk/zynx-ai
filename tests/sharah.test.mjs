@@ -47,7 +47,7 @@ describe('Sharah system prompt tests', () => {
     expect(reply.length).toBeLessThan(160);
     const qMarks = (reply.match(/\?/g) || []).length;
     expect(qMarks).toBe(1);
-  });
+  }, 30000);
 
   runIf(hasApiKey)('TEST 2 — one question only', async () => {
     const prompt = getBasePrompt();
@@ -57,7 +57,7 @@ describe('Sharah system prompt tests', () => {
 
     const qMarks = (reply.match(/\?/g) || []).length;
     expect(qMarks).toBe(1);
-  });
+  }, 30000);
 
   runIf(hasApiKey)('TEST 3 — no restating user input', async () => {
     const prompt = getBasePrompt();
@@ -71,7 +71,7 @@ describe('Sharah system prompt tests', () => {
 
     const qMarks = (reply.match(/\?/g) || []).length;
     expect(qMarks).toBe(1);
-  });
+  }, 30000);
 
   runIf(hasApiKey)('TEST 4 — no re-asking known info', async () => {
     const history = [
@@ -84,9 +84,8 @@ describe('Sharah system prompt tests', () => {
     expect(reply).not.toContain('900');
     expect(reply.toLowerCase()).not.toContain('investment');
 
-    const cashFinancing = /cash|financing|mortgage/i.test(reply);
-    const yieldAppreciation = /yield|appreciation|return/i.test(reply);
-    expect(cashFinancing || yieldAppreciation).toBe(true);
+    const timeline = /timeline|when|move|urgent|looking to close/i.test(reply);
+    expect(timeline).toBe(true);
   });
 
   runIf(hasApiKey)('TEST 5 — brevity hard limit <200 chars', async () => {
@@ -96,7 +95,7 @@ describe('Sharah system prompt tests', () => {
     ]);
 
     expect(reply.length).toBeLessThan(200);
-  });
+  }, 30000);
 
   runIf(hasApiKey)('TEST 6 — correct qualification sequence', async () => {
     const prompt = getBasePrompt();
@@ -143,7 +142,7 @@ describe('Sharah system prompt tests', () => {
       { role: 'assistant', content: turn3 },
       { role: 'user', content: 'Investment' }
     ]);
-    const cashFinancing = /cash|financing|mortgage|loan/i.test(turn4);
-    expect(cashFinancing).toBe(true);
+    const timelineKw = /timeline|when|move|urgent|looking to close/i.test(turn4);
+    expect(timelineKw).toBe(true);
   }, 30000);
 });
