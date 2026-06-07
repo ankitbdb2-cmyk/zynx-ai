@@ -78,8 +78,8 @@ router.post('/chat', async (req, res) => {
         const reply = cleanResponse(response.content[0].text);
         res.json({ reply });
     } catch (error) {
-        console.error('Error in ghost chat:', error.message);
-        res.status(500).json({ error: 'Failed to process chat' });
+        console.error('Error in ghost chat:', error.message, error.stack?.slice(0, 500));
+        res.status(500).json({ error: 'Failed to process chat', detail: error.message });
     }
 });
 
