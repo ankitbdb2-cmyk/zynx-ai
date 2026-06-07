@@ -13,3 +13,5 @@ services:
         value: 18.20.4
       - key: NODE_ENV
         value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
