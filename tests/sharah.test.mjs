@@ -81,7 +81,7 @@ describe('Sharah system prompt tests', () => {
     expect(asksContact).toBe(true);
     const qualifies = /own.use|invest|timeline|when.*move|cash|financing|mortgage/i.test(reply);
     expect(qualifies).toBe(false);
-  });
+  }, 30000);
 
   runIf(hasApiKey)('TEST 5 — brevity hard limit <200 chars', async () => {
     const prompt = getBasePrompt();

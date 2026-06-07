@@ -28,7 +28,7 @@ app.use(dbGuard);
 app.get('/', (req, res) => {
     try {
         const row = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
-        const agencyName = row ? row.value : (process.env.AGENCY_NAME || 'Sandcastle Properties');
+        const agencyName = process.env.AGENCY_NAME || (row ? row.value : 'PropMind Real Estate');
         let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
         html = html.split('{{AGENCY_NAME}}').join(agencyName);
         res.setHeader('Content-Type', 'text/html; charset=utf-8');

@@ -8,10 +8,16 @@ services:
     buildCommand: npm install && npm rebuild better-sqlite3
     startCommand: npm start
     healthCheckPath: /health
+    disk:
+      name: data
+      mountPath: /opt/render/project/data
+      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 18.20.4
       - key: NODE_ENV
         value: production
+      - key: AGENCY_NAME
+        sync: false
       - key: ANTHROPIC_API_KEY
         sync: false

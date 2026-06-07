@@ -15,10 +15,10 @@ const anthropic = new Anthropic({
 router.get('/config', (req, res) => {
     try {
         const row = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
-        const agencyName = row ? row.value : (process.env.AGENCY_NAME || 'Sandcastle Properties');
+        const agencyName = process.env.AGENCY_NAME || (row ? row.value : 'PropMind Real Estate');
         res.json({ agencyName });
     } catch (e) {
-        res.json({ agencyName: process.env.AGENCY_NAME || 'Sandcastle Properties' });
+        res.json({ agencyName: process.env.AGENCY_NAME || 'PropMind Real Estate' });
     }
 });
 
@@ -51,8 +51,7 @@ router.get('/stats', (req, res) => {
 router.post('/chat', async (req, res) => {
     try {
         const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
-        const agencyName = agencyRow ? agencyRow.value : (process.env.AGENCY_NAME || 'Sandcastle Properties');
-
+        const agencyName = process.env.AGENCY_NAME || (agencyRow ? agencyRow.value : 'PropMind Real Estate');
         const { messages } = req.body; 
         
         // Fetch properties from DB
@@ -76,6 +75,82 @@ router.post('/chat', async (req, res) => {
         });
 
         const reply = cleanResponse(response.content[0].text);
+
+        // ─── Lead detection and scoring ────────────────────────────────
+        try {
+            const userTexts = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
+            const assistantTexts = messages.filter(m => m.role === 'assistant').map(m => m.content).join(' ');
+
+            const extract = (pattern) => {
+                const m = userTexts.match(pattern);
+                return m ? m[1] || m[0] : null;
+            };
+
+            const areaMatch = extract(/(?:in\s+|area\s*:?\s*)([A-Za-z\s]+?)(?:\s*,|\s+budget|\s+for|\s+around|$)/i)
+                || extract(/\b(Marina|Downtown|JBR|JVC|Jumeirah|Palm|Business Bay|Creek Harbour|Dubai Hills|Meydan|Arjan|Damac Hills)\b/i);
+            const budgetMatch = extract(/(\d[\d.,]*(?:\s*[MK])?)\s*(?:k|m|K|M)?\s*(?:aed|dirhams?)?(?:\s*budget)?/i)
+                || extract(/\b(?:budget|spend|around|about)\s*:?\s*(\d[\d.,]*(?:\s*[MK])?)/i);
+            const timelineMatch = extract(/(\d+)\s*(?:month|week|day)/i)
+                || extract(/\b(?:urgent|asap|soon|immediately|right away)\b/i);
+            const nameMatch = extract(/my name(?:'s| is)?\s*([A-Za-z]+)/i)
+                || extract(/I['']m\s+([A-Za-z]+)/i);
+            const phoneMatch = userTexts.match(/(?:\+?971|05|0\d{2,3})[\d\s\-]{5,15}/);
+            const purposeMatch = extract(/\b(investment|investor|investing|own use|primary|personal use|move in)\b/i);
+            const numMonths = timelineMatch
+                ? parseInt(timelineMatch[1] || (timelineMatch[0] ? '1' : '0'))
+                : 0;
+
+            const hasBudget = !!budgetMatch;
+            const hasArea = !!areaMatch;
+            const hasTimeline = !!timelineMatch;
+            const hasPhone = !!phoneMatch;
+            const hasName = !!nameMatch;
+
+            let hotScore = 1;
+            let leadStage = 'Cold';
+
+            if (hasArea && !hasBudget) {
+                hotScore = 2;
+                leadStage = 'Cold';
+            } else if (hasBudget && hasTimeline && numMonths > 0 && numMonths <= 3) {
+                hotScore = 8;
+                leadStage = 'Hot';
+            } else if (hasBudget && hasTimeline && numMonths > 3) {
+                hotScore = 5;
+                leadStage = 'Warm';
+            } else if (hasBudget && !hasTimeline) {
+                hotScore = 4;
+                leadStage = 'Warm';
+            }
+
+            if ((hasArea || hasBudget) && hasPhone) {
+                const phoneVal = phoneMatch[0];
+                const existing = db.prepare(`SELECT id FROM leads WHERE phone = ?`).get(phoneVal);
+                const nameVal = nameMatch ? nameMatch[0] : 'Unknown';
+                const areaVal = areaMatch ? areaMatch[0].trim() : null;
+                const budgetVal = budgetMatch ? budgetMatch[0] : null;
+                const timelineVal = timelineMatch ? timelineMatch[0] : null;
+                const purposeVal = purposeMatch ? purposeMatch[0].toLowerCase() : null;
+
+                if (!existing) {
+                    const info = db.prepare(`
+                        INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, area, purpose)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(nameVal, phoneVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal);
+                    console.log('LEAD SAVED:', info.lastInsertRowid, '| Score:', hotScore, '| Stage:', leadStage, '| Phone:', phoneVal);
+                } else {
+                    db.prepare(`
+                        UPDATE leads SET hot_score = ?, lead_stage = ?, budget = COALESCE(?, budget),
+                        timeline = COALESCE(?, timeline), area = COALESCE(?, area), purpose = COALESCE(?, purpose)
+                        WHERE id = ?
+                    `).run(hotScore, leadStage, budgetVal, timelineVal, areaVal, purposeVal, existing.id);
+                    console.log('LEAD UPDATED:', existing.id, '| Score:', hotScore, '| Stage:', leadStage);
+                }
+            }
+        } catch (leadErr) {
+            console.error('Lead scoring error:', leadErr.message);
+        }
+
         res.json({ reply });
     } catch (error) {
         console.error('Error in ghost chat:', error.message, error.stack?.slice(0, 500));

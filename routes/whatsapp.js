@@ -170,7 +170,7 @@ async function processMessage(from, userText, isVoice = false, transcriptionCost
     }
 
     const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
-    const agencyName = agencyRow ? agencyRow.value : (process.env.AGENCY_NAME || 'Sandcastle Properties');
+    const agencyName = process.env.AGENCY_NAME || (agencyRow ? agencyRow.value : 'PropMind Real Estate');
 
     const activeLaunch = getLaunchMode(db);
     const rentals = db.prepare(`SELECT * FROM properties WHERE type = 'Rent' AND (availability = 'Available' OR availability = 'Available now')`).all();

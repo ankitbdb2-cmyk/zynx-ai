@@ -224,8 +224,8 @@ function initDb() {
 
     const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
     if (!agencyRow) {
-        db.prepare(`INSERT INTO settings (key, value) VALUES ('agency_name', ?)`)
-          .run(process.env.AGENCY_NAME || 'Sandcastle Properties');
+        db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('agency_name', ?)`)
+          .run(process.env.AGENCY_NAME || 'PropMind Real Estate');
     }
 
     db.pragma('wal_checkpoint(PASSIVE)');
