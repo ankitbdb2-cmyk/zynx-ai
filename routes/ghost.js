@@ -6,9 +6,24 @@ const nodemailer = require('nodemailer');
 const { launchPVIL } = require('../services/post-viewing');
 const { getLaunchMode } = require('../services/launch-mode');
 const { buildSystemPrompt } = require('../services/system-prompt');
+const fs = require('fs');
+const path = require('path');
+
+// Resolve API key: build-injected .env takes priority, then process.env (dashboard)
+function resolveAnthropicKey() {
+  try {
+    const envFile = path.join(__dirname, '..', '.env');
+    if (fs.existsSync(envFile)) {
+      const raw = fs.readFileSync(envFile, 'utf8');
+      const m = raw.match(/^ANTHROPIC_API_KEY=(.+)$/m);
+      if (m) return m[1].trim();
+    }
+  } catch {}
+  return process.env.ANTHROPIC_API_KEY;
+}
 
 const anthropic = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY
+    apiKey: resolveAnthropicKey()
 });
 
 // ─── Config endpoint — frontend fetches this to get the agency name ───

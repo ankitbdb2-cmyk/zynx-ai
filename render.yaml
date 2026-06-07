@@ -5,7 +5,7 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: npm install && npm rebuild better-sqlite3
+    buildCommand: echo "ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY" > .env && npm install && npm rebuild better-sqlite3
     startCommand: npm start
     healthCheckPath: /health
     envVars:
