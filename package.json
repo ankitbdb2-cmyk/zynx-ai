@@ -7,7 +7,7 @@
     "start": "node server.js",
     "build": "npm rebuild better-sqlite3",
     "postinstall": "npm rebuild better-sqlite3 || true",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest run"
   },
   "keywords": [],
   "author": "",
@@ -26,6 +26,7 @@
     "nodemailer": "^8.0.6"
   },
   "devDependencies": {
-    "puppeteer": "^25.0.4"
+    "puppeteer": "^25.0.4",
+    "vitest": "^4.1.8"
   }
 }
