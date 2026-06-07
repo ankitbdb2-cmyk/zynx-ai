@@ -48,6 +48,7 @@ app.get('/health', (req, res) => {
     res.status(200).json({
         status: 'ok',
         uptime: process.uptime(),
+        hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
         persistence: {
             ready: p.ready,
             environment: p.environment,
