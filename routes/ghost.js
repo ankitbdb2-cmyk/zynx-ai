@@ -88,13 +88,15 @@ router.post('/chat', async (req, res) => {
 
             const areaMatch = extract(/(?:in\s+|area\s*:?\s*)([A-Za-z\s]+?)(?:\s*,|\s+budget|\s+for|\s+around|$)/i)
                 || extract(/\b(Marina|Downtown|JBR|JVC|Jumeirah|Palm|Business Bay|Creek Harbour|Dubai Hills|Meydan|Arjan|Damac Hills)\b/i);
-            const budgetMatch = extract(/(\d[\d.,]*(?:\s*[MK])?)\s*(?:k|m|K|M)?\s*(?:aed|dirhams?)?(?:\s*budget)?/i)
-                || extract(/\b(?:budget|spend|around|about)\s*:?\s*(\d[\d.,]*(?:\s*[MK])?)/i);
+            const budgetMatch = extract(/\b(?:budget|spend|around|about)\s*:?\s*(\d[\d.,]*(?:\s*[MK])?)/i)
+                || extract(/(\d[\d.,]*(?:\s*[MK])?)\s*(?:k|m|K|M)?\s*(?:aed|dirhams?)?(?:\s*budget)?/i);
             const timelineMatch = extract(/(\d+)\s*(?:month|week|day)/i)
                 || extract(/\b(?:urgent|asap|soon|immediately|right away)\b/i);
-            const nameMatch = extract(/my name(?:'s| is)?\s*([A-Za-z]+)/i)
-                || extract(/I['']m\s+([A-Za-z]+)/i);
-            const phoneMatch = userTexts.match(/(?:\+?971|05|0\d{2,3})[\d\s\-]{5,15}/);
+            const STOPWORDS = 'and|my|is|are|the|a|an|with|from|for|at|to|in|on|of|by|this|that|it';
+            const nameMatch = extract(new RegExp(`my name(?:'s| is)?\\s*([A-Za-z]+(?:\\s+(?!(?:${STOPWORDS})\\b)[A-Za-z]+)?)`, 'i'))
+                || extract(/I['']m\s+([A-Za-z]+)/i)
+                || extract(/([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)+)/);
+            const phoneMatch = userTexts.match(/\d{8,15}/);
             const purposeMatch = extract(/\b(investment|investor|investing|own use|primary|personal use|move in)\b/i);
             const numMonths = timelineMatch
                 ? parseInt(timelineMatch[1] || (timelineMatch[0] ? '1' : '0'))
@@ -126,11 +128,11 @@ router.post('/chat', async (req, res) => {
             if ((hasArea || hasBudget) && hasPhone) {
                 const phoneVal = phoneMatch[0];
                 const existing = db.prepare(`SELECT id FROM leads WHERE phone = ?`).get(phoneVal);
-                const nameVal = nameMatch ? nameMatch[0] : 'Unknown';
-                const areaVal = areaMatch ? areaMatch[0].trim() : null;
-                const budgetVal = budgetMatch ? budgetMatch[0] : null;
-                const timelineVal = timelineMatch ? timelineMatch[0] : null;
-                const purposeVal = purposeMatch ? purposeMatch[0].toLowerCase() : null;
+                const nameVal = nameMatch || 'Unknown';
+                const areaVal = areaMatch ? areaMatch.trim() : null;
+                const budgetVal = budgetMatch || null;
+                const timelineVal = timelineMatch || null;
+                const purposeVal = purposeMatch ? purposeMatch.toLowerCase() : null;
 
                 if (!existing) {
                     const info = db.prepare(`
