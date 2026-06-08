@@ -60,8 +60,47 @@ router.post('/chat', async (req, res) => {
         const activeLaunch = getLaunchMode(db);
         const rentals = properties.filter(p => p.type === 'Rent');
         const sales = properties.filter(p => p.type === 'Sale');
+        // Pre-extract lead data from current messages for the system prompt
+        // (runs BEFORE DB save, so Sarah sees collected data immediately)
+        const allUserText = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
+        const phoneInMsg = allUserText.match(/\d{7,15}/);
+        const AREA_NAMES = /^(Marina|Downtown|JBR|JVC|Jumeirah|Palm|Business Bay|Creek Harbour|Dubai Islands|Dubai Hills|Meydan|Arjan|Damac Hills|Al Jaddaf|Nad Al Sheba)$/i;
+        const preName = allUserText.match(/my name(?:'s| is)?\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)/i)
+            || allUserText.match(/I['']m\s+([A-Za-z]+)/i)
+            || (() => { const m = allUserText.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/); return m && !AREA_NAMES.test(m[0]) ? m : null; })()
+            || (() => { const m = allUserText.match(/\b([A-Z]{2,}(?:\s+[A-Z]{2,})+)\b/); return m && !AREA_NAMES.test(m[0]) ? m : null; })();
+        const preBudget = (allUserText.match(/\b\d[\d.,]*\s*[MKmk]\b/i)
+            || allUserText.match(/(\d[\d.,]*(?:\s*[MKmk])?)\s*(?:million|k|m)?\s*(?:aed|dirhams?)?/i));
+        const preBudgetClean = preBudget && !/\b\d{7,}\b/.test(preBudget[0]) ? preBudget[0].trim() : null;
+        const preArea = allUserText.match(/\b(Marina|Downtown|JBR|JVC|Jumeirah|Palm|Business Bay|Creek Harbour|Dubai Islands|Dubai Hills|Meydan|Arjan|Damac Hills|Al Jaddaf|Nad Al Sheba)\b/i);
+        const prePurpose = allUserText.match(/\b(investment|investor|investing|own use|primary|personal|move in|rental income|yield|ROI)\b/i);
+        const preTimeline = allUserText.match(/(\d+)\s*(?:month|week|day)/i) || allUserText.match(/\b(urgent|asap|soon|immediately|next month|right away|move in)\b/i);
+        const preCash = allUserText.match(/\b(cash|full payment|no mortgage|outright)\b/i);
+        // Build live profile from messages
+        const liveProfile = {
+            name: preName ? (preName[1] || preName[0]).trim() : null,
+            phone: phoneInMsg ? phoneInMsg[0] : null,
+            budget: preBudgetClean,
+            area: preArea ? preArea[0].trim() : null,
+            purpose: prePurpose ? prePurpose[1].toLowerCase() : null,
+            timeline: preTimeline ? preTimeline[0].trim() : null,
+            hot_score: Math.min(2 + (preCash ? 3 : 0) + (prePurpose ? 1 : 0) + (preBudget ? 1 : 0) + (preArea ? 1 : 0), 10)
+        };
+        // Try DB lookup first (for prior turns data), fall back to live extraction
+        let leadProfile = null;
+        if (phoneInMsg) {
+            leadProfile = db.prepare('SELECT * FROM leads WHERE phone = ?').get(phoneInMsg[0]);
+        }
+        if (!leadProfile && preName) {
+            const rawName = (preName[1] || preName[0]).trim();
+            leadProfile = db.prepare("SELECT * FROM leads WHERE phone IS NULL AND name = ? ORDER BY id DESC LIMIT 1").get(rawName);
+        }
+        // Merge DB profile (persisted data) with live-extracted data (current turn)
+        const mergedProfile = { ...leadProfile, ...liveProfile };
+
         const systemPrompt = buildSystemPrompt(agencyName, {
             messages,
+            leadProfile: mergedProfile,
             properties: { rentals, sales },
             activeLaunch
         });
