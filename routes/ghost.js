@@ -81,10 +81,21 @@ router.post('/chat', async (req, res) => {
             const userTexts = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
 
             const phoneMatch = userTexts.match(/\d{7,15}/);
-            const nameMatch = userTexts.match(/my name(?:'s| is)?\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)/i)
-                || userTexts.match(/I['']m\s+([A-Za-z]+)/i)
-                || userTexts.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
-            const budgetMatch = userTexts.match(/(\d[\d.,]*(?:\s*[MKmk])?)\s*(?:million|k|m)?\s*(?:aed|dirhams?)?/i);
+            const AREA_NAMES = /^(Marina|Downtown|JBR|JVC|Jumeirah|Palm|Business Bay|Creek Harbour|Dubai Islands|Dubai Hills|Meydan|Arjan|Damac Hills|Al Jaddaf|Nad Al Sheba)$/i;
+            const rawNameMatch = userTexts.match(/my name(?:'s| is)?\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)/i)
+                || userTexts.match(/I['']m\s+([A-Za-z]+)/i);
+            const nameMatch = rawNameMatch
+                || (() => {
+                    const m = userTexts.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
+                    return m && !AREA_NAMES.test(m[0]) ? m : null;
+                })()
+                || (() => {
+                    const m = userTexts.match(/\b([A-Z]{2,}(?:\s+[A-Z]{2,})+)\b/);
+                    return m && !AREA_NAMES.test(m[0]) ? m : null;
+                })();
+            let budgetMatch = userTexts.match(/\b\d[\d.,]*\s*[MKmk]\b/i)
+                || userTexts.match(/(\d[\d.,]*(?:\s*[MKmk])?)\s*(?:million|k|m)?\s*(?:aed|dirhams?)?/i);
+            if (budgetMatch && /\b\d{7,}\b/.test(budgetMatch[0])) budgetMatch = null;
             const areaMatch = userTexts.match(/\b(Marina|Downtown|JBR|JVC|Jumeirah|Palm|Business Bay|Creek Harbour|Dubai Islands|Dubai Hills|Meydan|Arjan|Damac Hills|Al Jaddaf|Nad Al Sheba)\b/i);
             const timelineMatch = userTexts.match(/(\d+)\s*(?:month|week|day)/i)
                 || userTexts.match(/\b(urgent|asap|soon|immediately|next month|right away|move in)\b/i);
