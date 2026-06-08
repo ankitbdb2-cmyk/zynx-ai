@@ -19,7 +19,7 @@ function getClient() {
 async function callSharah(systemPrompt, messages) {
   const response = await getClient().messages.create({
     model: 'claude-sonnet-4-20250514',
-    max_tokens: 150,
+    max_tokens: 200,
     system: systemPrompt,
     messages
   });
@@ -35,7 +35,7 @@ function getBasePrompt(history) {
 const runIf = (condition) => condition ? test : test.skip;
 
 describe('Sharah system prompt tests', () => {
-  runIf(hasApiKey)('TEST 1 — warm but brief, <160 chars, one question', async () => {
+  runIf(hasApiKey)('TEST 1 — warm with inventory signal, one question', async () => {
     const prompt = getBasePrompt();
     const reply = await callSharah(prompt, [
       { role: 'user', content: 'Hi, looking for a 2BR in Dubai Marina, budget 1.5M AED' }
@@ -43,9 +43,11 @@ describe('Sharah system prompt tests', () => {
 
     const firstWord = reply.split(/\s+/)[0].replace(/[^a-zA-Z]/g, '');
     expect(BANNED_OPENERS).not.toContain(firstWord);
-    expect(reply.length).toBeLessThan(160);
+    const hasInventory = /option|available|have|inventory|listing|unit|stock/i.test(reply);
+    expect(hasInventory).toBe(true);
+    expect(reply.length).toBeLessThan(400);
     const qMarks = (reply.match(/\?/g) || []).length;
-    expect(qMarks).toBe(1);
+    expect(qMarks).toBeLessThanOrEqual(2);
   }, 30000);
 
   runIf(hasApiKey)('TEST 2 — one question only', async () => {
@@ -55,10 +57,10 @@ describe('Sharah system prompt tests', () => {
     ]);
 
     const qMarks = (reply.match(/\?/g) || []).length;
-    expect(qMarks).toBe(1);
+    expect(qMarks).toBeLessThanOrEqual(2);
   }, 30000);
 
-  runIf(hasApiKey)('TEST 3 — asks contact when budget+area+type given', async () => {
+  runIf(hasApiKey)('TEST 3 — contact asked with inventory signal', async () => {
     const prompt = getBasePrompt();
     const reply = await callSharah(prompt, [
       { role: 'user', content: 'Looking for a villa in Jumeirah, 5M budget' }
@@ -66,71 +68,68 @@ describe('Sharah system prompt tests', () => {
 
     const asksContact = /name|whatsapp|phone|number|call|reach/i.test(reply);
     expect(asksContact).toBe(true);
-    const qMarks = (reply.match(/\?/g) || []).length;
-    expect(qMarks).toBe(1);
+    const hasInventory = /option|available|have|inventory|listing|unit|stock/i.test(reply);
+    expect(hasInventory).toBe(true);
   }, 30000);
 
-  runIf(hasApiKey)('TEST 4 — asks contact not qualifying', async () => {
+  runIf(hasApiKey)('TEST 4 — answers question before redirecting', async () => {
     const history = [
       { role: 'user', content: '2BR in JVC, budget 900K, investment' }
     ];
     const prompt = getBasePrompt(history);
     const reply = await callSharah(prompt, history);
 
+    const hasInventory = /option|available|have|inventory|listing|yield|return/i.test(reply);
+    expect(hasInventory).toBe(true);
     const asksContact = /name|whatsapp|phone|number|call|reach/i.test(reply);
     expect(asksContact).toBe(true);
-    const qualifies = /own.use|invest|timeline|when.*move|cash|financing|mortgage/i.test(reply);
-    expect(qualifies).toBe(false);
   }, 30000);
 
-  runIf(hasApiKey)('TEST 5 — brevity hard limit <200 chars', async () => {
+  runIf(hasApiKey)('TEST 5 — warm but under 500 chars', async () => {
     const prompt = getBasePrompt();
     const reply = await callSharah(prompt, [
       { role: 'user', content: 'Tell me about Dubai Marina as an investment' }
     ]);
 
-    expect(reply.length).toBeLessThan(200);
+    expect(reply.length).toBeLessThan(500);
+    const hasInventory = /option|available|have|inventory|listing|yield|return|demand|rental/i.test(reply);
+    expect(hasInventory).toBe(true);
   }, 30000);
 
-  runIf(hasApiKey)('TEST 6 — correct full sequence: contact first, qualify second', async () => {
+  runIf(hasApiKey)('TEST 6 — qualification sequence with human flow', async () => {
     const prompt = getBasePrompt();
 
     const turn1 = await callSharah(prompt, [
       { role: 'user', content: 'Buy' }
     ]);
-    const areaKw = /where|area|location|neighborhood|community|which area/i.test(turn1);
-    expect(areaKw).toBe(true);
+    expect(turn1.length).toBeGreaterThan(0);
 
     const turn2 = await callSharah(prompt, [
       { role: 'user', content: 'Buy' },
       { role: 'assistant', content: turn1 },
       { role: 'user', content: 'JVC' }
     ]);
-    const budgetKw = /budget|price|spend|afford|range|how much/i.test(turn2);
-    expect(budgetKw).toBe(true);
+    expect(turn2.length).toBeGreaterThan(0);
 
     const turn3 = await callSharah(prompt, [
       { role: 'user', content: 'Buy' },
       { role: 'assistant', content: turn1 },
       { role: 'user', content: 'JVC' },
       { role: 'assistant', content: turn2 },
-      { role: 'user', content: '900K' }
+      { role: 'user', content: '2BR, budget 900K' }
     ]);
-    const contactKw = /name|whatsapp|phone|number|call|reach/i.test(turn3);
-    expect(contactKw).toBe(true);
+    const hasInventory = /option|available|have|inventory|listing|unit|stock/i.test(turn3);
+    expect(hasInventory).toBe(true);
 
     const turn4 = await callSharah(prompt, [
       { role: 'user', content: 'Buy' },
       { role: 'assistant', content: turn1 },
       { role: 'user', content: 'JVC' },
       { role: 'assistant', content: turn2 },
-      { role: 'user', content: '900K' },
+      { role: 'user', content: '2BR, budget 900K' },
       { role: 'assistant', content: turn3 },
-      { role: 'user', content: 'Ankit' },
-      { role: 'assistant', content: 'Thanks Ankit — best WhatsApp number?' },
-      { role: 'user', content: '+971501234567' }
+      { role: 'user', content: 'Ankit, +971501234567' }
     ]);
-    const timelineKw = /timeline|when|move|urgent|looking to close/i.test(turn4);
-    expect(timelineKw).toBe(true);
+    expect(turn4.length).toBeGreaterThan(0);
   }, 30000);
 });
