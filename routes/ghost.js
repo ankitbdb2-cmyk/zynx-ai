@@ -79,74 +79,80 @@ router.post('/chat', async (req, res) => {
         // ─── Lead detection and scoring ────────────────────────────────
         try {
             const userTexts = messages.filter(m => m.role === 'user').map(m => m.content).join(' ');
-            const assistantTexts = messages.filter(m => m.role === 'assistant').map(m => m.content).join(' ');
 
-            const extract = (pattern) => {
-                const m = userTexts.match(pattern);
-                return m ? m[1] || m[0] : null;
-            };
+            const phoneMatch = userTexts.match(/\d{7,15}/);
+            const nameMatch = userTexts.match(/my name(?:'s| is)?\s*([A-Za-z]+(?:\s+[A-Za-z]+)?)/i)
+                || userTexts.match(/I['']m\s+([A-Za-z]+)/i)
+                || userTexts.match(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)/);
+            const budgetMatch = userTexts.match(/(\d[\d.,]*(?:\s*[MKmk])?)\s*(?:million|k|m)?\s*(?:aed|dirhams?)?/i);
+            const areaMatch = userTexts.match(/\b(Marina|Downtown|JBR|JVC|Jumeirah|Palm|Business Bay|Creek Harbour|Dubai Islands|Dubai Hills|Meydan|Arjan|Damac Hills|Al Jaddaf|Nad Al Sheba)\b/i);
+            const timelineMatch = userTexts.match(/(\d+)\s*(?:month|week|day)/i)
+                || userTexts.match(/\b(urgent|asap|soon|immediately|next month|right away|move in)\b/i);
+            const purposeMatch = userTexts.match(/\b(investment|investor|investing|own use|primary|personal|move in|rental income|yield|ROI)\b/i);
+            const cashMatch = userTexts.match(/\b(cash|full payment|no mortgage|outright)\b/i);
 
-            const areaMatch = extract(/(?:in\s+|area\s*:?\s*)([A-Za-z\s]+?)(?:\s*,|\s+budget|\s+for|\s+around|$)/i)
-                || extract(/\b(Marina|Downtown|JBR|JVC|Jumeirah|Palm|Business Bay|Creek Harbour|Dubai Hills|Meydan|Arjan|Damac Hills)\b/i);
-            const budgetMatch = extract(/\b(?:budget|spend|around|about)\s*:?\s*(\d[\d.,]*(?:\s*[MK])?)/i)
-                || extract(/(\d[\d.,]*(?:\s*[MK])?)\s*(?:k|m|K|M)?\s*(?:aed|dirhams?)?(?:\s*budget)?/i);
-            const timelineMatch = extract(/(\d+)\s*(?:month|week|day)/i)
-                || extract(/\b(?:urgent|asap|soon|immediately|right away)\b/i);
-            const STOPWORDS = 'and|my|is|are|the|a|an|with|from|for|at|to|in|on|of|by|this|that|it';
-            const nameMatch = extract(new RegExp(`my name(?:'s| is)?\\s*([A-Za-z]+(?:\\s+(?!(?:${STOPWORDS})\\b)[A-Za-z]+)?)`, 'i'))
-                || extract(/I['']m\s+([A-Za-z]+)/i)
-                || extract(/([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)+)/);
-            const phoneMatch = userTexts.match(/\d{8,15}/);
-            const purposeMatch = extract(/\b(investment|investor|investing|own use|primary|personal use|move in)\b/i);
-            const numMonths = timelineMatch
-                ? parseInt(timelineMatch[1] || (timelineMatch[0] ? '1' : '0'))
-                : 0;
-
-            const hasBudget = !!budgetMatch;
-            const hasArea = !!areaMatch;
-            const hasTimeline = !!timelineMatch;
-            const hasPhone = !!phoneMatch;
-            const hasName = !!nameMatch;
-
-            let hotScore = 1;
+            // Psychology scoring
+            const psychSignals = [];
+            let hotScore = 2;
             let leadStage = 'Cold';
 
-            if (hasArea && !hasBudget) {
-                hotScore = 2;
-                leadStage = 'Cold';
-            } else if (hasBudget && hasTimeline && numMonths > 0 && numMonths <= 3) {
-                hotScore = 8;
-                leadStage = 'Hot';
-            } else if (hasBudget && hasTimeline && numMonths > 3) {
-                hotScore = 5;
-                leadStage = 'Warm';
-            } else if (hasBudget && !hasTimeline) {
-                hotScore = 4;
-                leadStage = 'Warm';
-            }
+            if (cashMatch) { psychSignals.push('CASH BUYER'); hotScore += 3; }
+            if (purposeMatch?.toString().match(/investment|investor|investing|yield|ROI/i)) { psychSignals.push('INVESTOR'); hotScore += 1; }
+            if (purposeMatch?.toString().match(/own use|primary|personal|move in/i)) { psychSignals.push('END USER'); hotScore += 1; }
+            if (timelineMatch?.toString().match(/urgent|asap|immediately|next month|soon/i)) { psychSignals.push('URGENT'); hotScore += 3; }
+            if (timelineMatch?.toString().match(/\b[1-3]\b/)) { psychSignals.push('CLOSING SOON'); hotScore += 2; }
+            if (budgetMatch) { psychSignals.push('BUDGET STATED'); hotScore += 1; }
+            if (areaMatch) { psychSignals.push('AREA DECIDED'); hotScore += 1; }
 
-            if ((hasArea || hasBudget) && hasPhone) {
-                const phoneVal = phoneMatch[0];
-                const existing = db.prepare(`SELECT id FROM leads WHERE phone = ?`).get(phoneVal);
-                const nameVal = nameMatch || 'Unknown';
-                const areaVal = areaMatch ? areaMatch.trim() : null;
-                const budgetVal = budgetMatch || null;
-                const timelineVal = timelineMatch || null;
-                const purposeVal = purposeMatch ? purposeMatch.toLowerCase() : null;
+            hotScore = Math.min(hotScore, 10);
+            if (hotScore >= 8) leadStage = 'Hot';
+            else if (hotScore >= 5) leadStage = 'Warm';
+            else leadStage = 'Cold';
 
+            const psychNotes = psychSignals.join(' · ') || 'Browsing';
+            const phoneVal = phoneMatch ? phoneMatch[0] : null;
+            const nameVal = nameMatch ? (nameMatch[1] || nameMatch[0]).trim() : 'Unknown';
+            const budgetVal = budgetMatch ? budgetMatch[0].trim() : null;
+            const areaVal = areaMatch ? areaMatch[0].trim() : null;
+            const timelineVal = timelineMatch ? timelineMatch[0].trim() : null;
+            const purposeVal = purposeMatch ? purposeMatch[1].toLowerCase() : null;
+
+            // Save on first user message regardless of phone
+            const firstUserMsg = messages.find(m => m.role === 'user');
+            if (!firstUserMsg) return;
+
+            if (phoneVal) {
+                const existing = db.prepare('SELECT id FROM leads WHERE phone = ?').get(phoneVal);
                 if (!existing) {
                     const info = db.prepare(`
-                        INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, area, purpose)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    `).run(nameVal, phoneVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal);
-                    console.log('LEAD SAVED:', info.lastInsertRowid, '| Score:', hotScore, '| Stage:', leadStage, '| Phone:', phoneVal);
+                        INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(nameVal, phoneVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes);
+                    console.log('LEAD SAVED:', info.lastInsertRowid, '| Score:', hotScore, '| Stage:', leadStage, '| Psych:', psychNotes);
                 } else {
                     db.prepare(`
-                        UPDATE leads SET hot_score = ?, lead_stage = ?, budget = COALESCE(?, budget),
-                        timeline = COALESCE(?, timeline), area = COALESCE(?, area), purpose = COALESCE(?, purpose)
+                        UPDATE leads SET
+                            name = COALESCE(NULLIF(?, 'Unknown'), name),
+                            hot_score = ?, lead_stage = ?,
+                            budget = COALESCE(?, budget),
+                            timeline = COALESCE(?, timeline),
+                            area = COALESCE(?, area),
+                            purpose = COALESCE(?, purpose),
+                            psychology_notes = ?
                         WHERE id = ?
-                    `).run(hotScore, leadStage, budgetVal, timelineVal, areaVal, purposeVal, existing.id);
-                    console.log('LEAD UPDATED:', existing.id, '| Score:', hotScore, '| Stage:', leadStage);
+                    `).run(nameVal, hotScore, leadStage, budgetVal, timelineVal, areaVal, purposeVal, psychNotes, existing.id);
+                    console.log('LEAD UPDATED:', existing.id, '| Score:', hotScore, '| Psych:', psychNotes);
+                }
+            } else {
+                // No phone yet — save anonymous partial lead keyed on session
+                const sessionKey = messages[0]?.content?.slice(0, 40) || 'anon';
+                const existing = db.prepare("SELECT id FROM leads WHERE phone IS NULL AND name = ?").get(nameVal === 'Unknown' ? sessionKey : nameVal);
+                if (!existing) {
+                    db.prepare(`
+                        INSERT INTO leads (name, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(nameVal === 'Unknown' ? 'Visitor' : nameVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes);
+                    console.log('PARTIAL LEAD SAVED | Score:', hotScore, '| Psych:', psychNotes);
                 }
             }
         } catch (leadErr) {

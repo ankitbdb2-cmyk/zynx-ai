@@ -174,10 +174,20 @@ ${[
   `;
 }
 
+function formatListings(properties) {
+  const { rentals = [], sales = [] } = properties || {};
+  const all = [...sales, ...rentals];
+  if (!all.length) return 'No listings currently available.';
+  return all.map(p =>
+    `- ${p.bedrooms || ''}BR ${p.property_type || p.type || 'Unit'} | ${p.area || p.location} | AED ${Number(p.price).toLocaleString()} | ${p.title || p.description || ''}`
+  ).join('\n');
+}
+
 function buildSystemPrompt(agencyName, options = {}) {
   const {
     messages = [],
     leadProfile = {},
+    properties = null,
     activeLaunch = null
   } = options;
 
@@ -204,7 +214,16 @@ function buildSystemPrompt(agencyName, options = {}) {
     }
   }
 
-  let prompt = SYSTEM_PROMPT.replace('{{AGENCY_NAME}}', agencyName).replace('{{LEAD_CONTEXT_BLOCK}}', buildLeadContext(lead, messages));
+  const listingsBlock = `CURRENT LISTINGS — YOU KNOW THESE EXACTLY. CITE THEM BY NAME AND PRICE:
+${formatListings(properties)}
+
+RULE: When a lead mentions area or budget, name at least one matching listing
+with its exact price. Never say "we have options" without naming one.
+If a listing says 14% ROI — quote that number exactly.
+
+${buildLeadContext(lead, messages)}`;
+
+  let prompt = SYSTEM_PROMPT.replace('{{AGENCY_NAME}}', agencyName).replace('{{LEAD_CONTEXT_BLOCK}}', listingsBlock);
 
   if (activeLaunch) {
     prompt += '\n\n' + buildLaunchOverlay(activeLaunch);
