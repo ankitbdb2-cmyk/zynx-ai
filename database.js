@@ -114,6 +114,7 @@ function initDb() {
     const leadMigrations = [
         { col: 'hot_score', def: 'INTEGER DEFAULT 0' },
         { col: 'lead_stage', def: "TEXT DEFAULT 'Cold'" },
+        { col: 'purpose', def: 'TEXT' },
         { col: 'signals', def: 'TEXT' },
         { col: 'recommended_action', def: 'TEXT' },
         { col: 'area', def: 'TEXT' },
