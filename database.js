@@ -85,10 +85,10 @@ if (!fs.existsSync(dbPath) && IS_RENDER) {
 const db = new Database(dbPath);
 console.log('Connected to SQLite.');
 
-db.pragma('journal_mode = WAL');
+db.pragma('journal_mode = DELETE');
 db.pragma('synchronous = FULL');
 db.pragma('foreign_keys = ON');
-console.log('Pragmas: WAL, FULL sync, foreign keys ON.');
+console.log('Pragmas: DELETE journal, FULL sync, foreign keys ON.');
 
 initDb();
 
@@ -229,7 +229,6 @@ function initDb() {
           .run(process.env.AGENCY_NAME || 'PropMind Real Estate');
     }
 
-    db.pragma('wal_checkpoint(TRUNCATE)');
     persistenceInfo.dbExists = fs.existsSync(dbPath);
     if (persistenceInfo.dbExists) persistenceInfo.dbSizeBytes = fs.statSync(dbPath).size;
 

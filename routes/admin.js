@@ -254,7 +254,6 @@ router.post('/properties', (req, res) => {
     const { type, title, area, price, bedrooms, description, availability } = req.body;
     try {
         const info = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability || 'Available now');
-        db.pragma('wal_checkpoint(TRUNCATE)');
         res.json({ success: true, id: info.lastInsertRowid });
     } catch (err) {
         console.error('Failed to add property:', err);
@@ -346,7 +345,6 @@ router.post('/properties/bulk', (req, res) => {
             return ids;
         });
         const ids = insertAll(listings);
-        db.pragma('wal_checkpoint(TRUNCATE)');
         res.json({ success: true, saved: ids.length, ids });
     } catch (err) {
         console.error('Bulk save error:', err);
