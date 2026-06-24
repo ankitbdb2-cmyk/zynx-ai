@@ -31,7 +31,7 @@ Rules:
 
 async function parseListingsWithClaude(rawText) {
     const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 4000,
         temperature: 0.2,
         system: PARSE_LISTINGS_PROMPT,

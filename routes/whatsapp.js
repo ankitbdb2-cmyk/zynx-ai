@@ -190,7 +190,7 @@ async function processMessage(from, userText, isVoice = false, transcriptionCost
     }));
 
     const response = await anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5',
         max_tokens: 500,
         temperature: 0.7,
         system: systemPrompt,

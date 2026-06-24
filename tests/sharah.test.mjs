@@ -18,7 +18,7 @@ function getClient() {
 
 async function callSharah(systemPrompt, messages) {
   const response = await getClient().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5',
     max_tokens: 200,
     system: systemPrompt,
     messages
