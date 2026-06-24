@@ -1,0 +1,11 @@
+[
+  {"type":"Sale","title":"Mercedes Benz Places 4BR","area":"Downtown Dubai","price":"AED 30,000,000","bedrooms":"4BR","description":"HIGH ROI, Skyline view, Mercedes brand value, 3,568 sqft"},
+  {"type":"Sale","title":"Mercedes Benz Places 3BR","area":"Downtown Dubai","price":"AED 19,999,999","bedrooms":"3BR","description":"Luxurious Living, No Commission, HIGH FLOOR, 2,711 sqft"},
+  {"type":"Sale","title":"Allegro Park 3BR","area":"Dubai Islands","price":"AED 6,156,000","bedrooms":"3BR","description":"SEA FACING LIVING, PRIVATE JACUZZI, VIP, 3,377 sqft"},
+  {"type":"Sale","title":"Sky Suites 2BR","area":"Jumeirah Village Circle","price":"AED 4,820,000","bedrooms":"2BR","description":"LIVE SOON, MORTGAGE, SKY LIVING, PRIVATE POOL, 4,406 sqft"},
+  {"type":"Sale","title":"Natuzzi Harmony Residences 3BR","area":"Dubai Islands","price":"AED 4,660,000","bedrooms":"3BR","description":"EVENT OFFER, PREMIUM FURNISHED, PRIVATE POOL, 1,677 sqft"},
+  {"type":"Sale","title":"Maybach Six 3BR","area":"Nad Al Sheba 1","price":"AED 4,600,000","bedrooms":"3BR","description":"PANORAMIC VIEWS, SIGNATURE RESIDENCES, SMART SYSTEM, 1,325 sqft"},
+  {"type":"Sale","title":"Allegro Park 3BR","area":"Dubai Islands","price":"AED 4,490,000","bedrooms":"3BR","description":"PREMIUM WATERFRONT VIEWS, 14% ROI, 2,584 sqft"},
+  {"type":"Sale","title":"Binghatti Ghost 3BR","area":"Dubai Healthcare City 2","price":"AED 4,200,000","bedrooms":"3BR","description":"MOVE NOW, 0% DLD FEES, HIGH FLOOR, VIP, 1,897 sqft"},
+  {"type":"Sale","title":"Binghatti Ghost 3BR","area":"Dubai Healthcare City 2","price":"AED 4,177,000","bedrooms":"3BR","description":"GET THE KEY NOW, DOWNTOWN & POOL VIEW, 14% ROI, 1,903 sqft"}
+]

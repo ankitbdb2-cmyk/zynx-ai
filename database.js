@@ -1,6 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const SEED_FILE = path.resolve(__dirname, 'seed-data.json');
 
 // ─── PERSISTENCE — production MUST use Render persistent disk ───────────────
 const IS_RENDER = !!process.env.RENDER;
@@ -214,14 +215,24 @@ function initDb() {
 
     const propertyCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
     const leadCount = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
-    persistenceInfo.propertyCount = propertyCount;
+    if (propertyCount === 0 && fs.existsSync(SEED_FILE)) {
+        try {
+            const seedData = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
+            const stmt = db.prepare('INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            const insertAll = db.transaction((rows) => { for (const p of rows) stmt.run(p.type, p.title, p.area, p.price, p.bedrooms, p.description, 'Available now'); });
+            insertAll(seedData);
+            console.log(`  Seeded ${seedData.length} properties from seed-data.json`);
+        } catch (e) { console.error('Seed failed:', e.message); }
+    }
+    persistenceInfo.propertyCount = propertyCount > 0 ? propertyCount : db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
     persistenceInfo.leadCount = leadCount;
 
     console.log('────────────────────────────────────────────────────────────');
-    console.log(`  PERSISTENCE CHECK: ${propertyCount} properties, ${leadCount} leads`);
+    const finalPropCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
+    console.log(`  PERSISTENCE CHECK: ${finalPropCount} properties, ${leadCount} leads`);
     console.log('────────────────────────────────────────────────────────────');
 
-    console.log(`  ✓ DATA PRESERVED — ${propertyCount} properties, ${leadCount} leads. No overwrite.`);
+    console.log(`  ✓ DATA PRESERVED — ${finalPropCount} properties, ${leadCount} leads. No overwrite.`);
 
     const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
     if (!agencyRow) {
