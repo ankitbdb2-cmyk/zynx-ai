@@ -1,5 +1,11 @@
 node_modules/
 .env
+.env.local
+.env.buildtest
 propmind.db
 propmind.db-shm
 propmind.db-wal
+.next/
+logs/
+prisma/
+next-env.d.ts
