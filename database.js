@@ -229,7 +229,7 @@ function initDb() {
           .run(process.env.AGENCY_NAME || 'PropMind Real Estate');
     }
 
-    db.pragma('wal_checkpoint(PASSIVE)');
+    db.pragma('wal_checkpoint(TRUNCATE)');
     persistenceInfo.dbExists = fs.existsSync(dbPath);
     if (persistenceInfo.dbExists) persistenceInfo.dbSizeBytes = fs.statSync(dbPath).size;
 

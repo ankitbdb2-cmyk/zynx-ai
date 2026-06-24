@@ -205,6 +205,7 @@ router.post('/chat', async (req, res) => {
                     console.log('PARTIAL LEAD SAVED | Score:', hotScore, '| Psych:', psychNotes);
                 }
             }
+            db.pragma('wal_checkpoint(TRUNCATE)');
         } catch (leadErr) {
             console.error('Lead scoring error:', leadErr.message);
         }
