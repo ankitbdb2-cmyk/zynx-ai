@@ -7,9 +7,9 @@
 /* --- Keyframes ------------------------------------------------ */
 
 @keyframes softPulse {
-  0%   { box-shadow: 0 0 0 0 rgba(0, 245, 255, 0.45); }
-  70%  { box-shadow: 0 0 0 10px rgba(0, 245, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 245, 255, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(238, 9, 121, 0.5); }
+  70%  { box-shadow: 0 0 0 12px rgba(238, 9, 121, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(238, 9, 121, 0); }
 }
 
 @keyframes greenPulse {
@@ -45,8 +45,8 @@
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  background: var(--accent, #00f5ff);
-  color: #050508;
+  background: linear-gradient(135deg, #ff6a00, #ee0979, #bd00ff);
+  color: #ffffff;
   border: none;
   cursor: pointer;
   display: flex;
@@ -57,15 +57,15 @@
 }
 
 .ghost-toggle svg {
-  fill: #050508;
+  fill: #ffffff;
 }
 
 .ghost-toggle:hover {
-  background: var(--accent, #00f5ff);
+  background: linear-gradient(135deg, #ff6a00, #ee0979, #bd00ff);
   filter: brightness(1.15);
-  transform: scale(1.06);
+  transform: scale(1.08);
   animation: none;
-  box-shadow: 0 0 30px var(--glow-cyan, rgba(0, 245, 255, 0.45));
+  box-shadow: 0 0 35px rgba(238, 9, 121, 0.5);
 }
 
 /* --- Chat Window ---------------------------------------------- */
