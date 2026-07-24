@@ -56,6 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const div = document.createElement('div');
     div.className = `message ${sender}`;
     div.textContent = text;
+    if (sender === 'user') {
+      div.style.background = 'linear-gradient(135deg, #ff6a00, #ee0979, #bd00ff)';
+      div.style.boxShadow = '0 4px 20px rgba(238, 9, 121, 0.35)';
+      div.style.color = '#ffffff';
+    }
     msgBox.insertBefore(div, typing);
     msgBox.scrollTop = msgBox.scrollHeight;
   }
