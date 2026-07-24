@@ -63,7 +63,14 @@ app.get('/health', (req, res) => {
     });
 });
 
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  maxAge: 0,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+  }
+}));
 
 const ghostRoutes = require('./routes/ghost');
 const closerRoutes = require('./routes/closer');
