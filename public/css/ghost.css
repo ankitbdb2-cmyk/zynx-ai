@@ -198,10 +198,11 @@
 }
 
 .message.user {
-  background: var(--accent2, #7b2fff);
+  background: linear-gradient(135deg, #f72585, #7209b7, #560bad, #480ca8);
   color: #ffffff;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
+  box-shadow: 0 4px 18px rgba(247, 37, 133, 0.3);
 }
 
 /* --- Typing Indicator ----------------------------------------- */
