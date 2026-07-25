@@ -57,8 +57,8 @@ document.addEventListener('DOMContentLoaded', () => {
     div.className = `message ${sender}`;
     div.textContent = text;
     if (sender === 'user') {
-      div.style.background = 'linear-gradient(135deg, #ff6a00, #ee0979, #bd00ff)';
-      div.style.boxShadow = '0 4px 20px rgba(238, 9, 121, 0.35)';
+      div.style.background = 'linear-gradient(135deg, #f72585, #7209b7, #560bad, #480ca8)';
+      div.style.boxShadow = '0 4px 20px rgba(247, 37, 133, 0.35)';
       div.style.color = '#ffffff';
     }
     msgBox.insertBefore(div, typing);

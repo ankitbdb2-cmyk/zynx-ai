@@ -7,9 +7,9 @@
 /* --- Keyframes ------------------------------------------------ */
 
 @keyframes softPulse {
-  0%   { box-shadow: 0 0 0 0 rgba(238, 9, 121, 0.5); }
-  70%  { box-shadow: 0 0 0 12px rgba(238, 9, 121, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(238, 9, 121, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(0, 245, 255, 0.5); }
+  70%  { box-shadow: 0 0 0 12px rgba(123, 47, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 245, 255, 0); }
 }
 
 @keyframes greenPulse {
@@ -45,7 +45,7 @@
   width: 58px;
   height: 58px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #ff6a00, #ee0979, #bd00ff);
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
   color: #ffffff;
   border: none;
   cursor: pointer;
@@ -61,11 +61,11 @@
 }
 
 .ghost-toggle:hover {
-  background: linear-gradient(135deg, #ff6a00, #ee0979, #bd00ff);
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
   filter: brightness(1.15);
   transform: scale(1.08);
   animation: none;
-  box-shadow: 0 0 35px rgba(238, 9, 121, 0.5);
+  box-shadow: 0 0 35px rgba(0, 245, 255, 0.4);
 }
 
 /* --- Chat Window ---------------------------------------------- */
@@ -81,7 +81,8 @@
   border-radius: 20px;
   box-shadow:
     0 24px 64px rgba(0, 0, 0, 0.7),
-    0 0 0 1px rgba(0, 245, 255, 0.05);
+    0 0 0 1px rgba(0, 245, 255, 0.05),
+    0 0 40px rgba(123, 47, 255, 0.08);
   display: none;
   flex-direction: column;
   overflow: hidden;
@@ -100,6 +101,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: relative;
+}
+
+.ghost-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 1.2rem;
+  right: 1.2rem;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2), transparent);
+  opacity: 0.4;
 }
 
 .ghost-header-info {
@@ -112,8 +125,10 @@
   width: 38px;
   height: 38px;
   border-radius: 50%;
-  background: var(--accent-dim, rgba(0, 245, 255, 0.08));
-  border: 1.5px solid var(--accent, #00f5ff);
+  background: linear-gradient(135deg, var(--accent-dim), var(--accent2-dim));
+  border: 1.5px solid transparent;
+  background-clip: padding-box;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -121,6 +136,19 @@
   font-weight: 700;
   color: var(--accent, #00f5ff);
   flex-shrink: 0;
+}
+
+.ghost-avatar::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  padding: 1.5px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .ghost-name {
@@ -258,8 +286,8 @@
 }
 
 .ghost-input-wrapper:focus-within {
-  border-color: var(--accent, #00f5ff);
-  box-shadow: 0 0 0 3px var(--accent-dim, rgba(0, 245, 255, 0.08));
+  border-color: var(--accent2, #7b2fff);
+  box-shadow: 0 0 0 3px var(--accent2-dim, rgba(123, 47, 255, 0.12));
 }
 
 .ghost-input {
@@ -283,7 +311,7 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--accent, #00f5ff);
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
   color: #050508;
   border: none;
   cursor: pointer;
@@ -314,10 +342,11 @@
 }
 
 .ghost-messages::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.06);
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
   border-radius: 4px;
+  opacity: 0.6;
 }
 
 .ghost-messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.12);
+  opacity: 1;
 }
