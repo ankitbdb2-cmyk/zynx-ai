@@ -173,6 +173,52 @@ function initDb() {
         )
     `).run();
 
+    // ─── Agencies (multi-tenant) ─────────────────────────────────────────────
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS agencies (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug TEXT UNIQUE NOT NULL,
+            name TEXT NOT NULL,
+            whatsapp TEXT DEFAULT '',
+            contact TEXT DEFAULT '',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    `).run();
+    // Contact column migration (older DBs created without it)
+    try { db.prepare(`ALTER TABLE agencies ADD COLUMN contact TEXT DEFAULT ''`).run(); } catch (e) { /* exists */ }
+
+    // ─── agency_id column migrations ─────────────────────────────────────────
+    const agencyIdMigrations = [
+        { table: 'properties', col: 'agency_id', def: 'INTEGER DEFAULT NULL' },
+        { table: 'leads',      col: 'agency_id', def: 'INTEGER DEFAULT NULL' },
+    ];
+    for (const m of agencyIdMigrations) {
+        try { db.prepare(`ALTER TABLE ${m.table} ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }
+    }
+
+    // ─── Ensure a default agency exists (seeded from env / legacy settings) ──
+    const defaultAgencyName = process.env.AGENCY_NAME || 'PropMind Real Estate';
+    const defaultAgencySlug = process.env.AGENCY_SLUG
+        || defaultAgencyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+        || 'propmind';
+    const defaultContact = process.env.AGENT_WHATSAPP_NUMBER || process.env.AGENCY_WHATSAPP || '';
+    db.prepare(`
+        INSERT OR IGNORE INTO agencies (slug, name, whatsapp, contact)
+        VALUES (?, ?, ?, ?)
+    `).run(defaultAgencySlug, defaultAgencyName, defaultContact, defaultContact);
+    const defaultAgency = db.prepare(`SELECT * FROM agencies ORDER BY id ASC LIMIT 1`).get();
+
+    // Backfill legacy rows so nothing is left orphaned
+    db.prepare(`
+        UPDATE properties SET agency_id = ? WHERE agency_id IS NULL
+    `).run(defaultAgency.id);
+    db.prepare(`
+        UPDATE leads SET agency_id = ? WHERE agency_id IS NULL
+    `).run(defaultAgency.id);
+    db.prepare(`
+        UPDATE agencies SET contact = whatsapp WHERE (contact IS NULL OR contact = '') AND whatsapp IS NOT NULL AND whatsapp != ''
+    `).run();
+
     try {
         db.prepare(`CREATE TABLE IF NOT EXISTS launches (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -218,8 +264,8 @@ function initDb() {
     if (propertyCount === 0 && fs.existsSync(SEED_FILE)) {
         try {
             const seedData = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
-            const stmt = db.prepare('INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)');
-            const insertAll = db.transaction((rows) => { for (const p of rows) stmt.run(p.type, p.title, p.area, p.price, p.bedrooms, p.description, 'Available now'); });
+            const stmt = db.prepare('INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
+            const insertAll = db.transaction((rows) => { for (const p of rows) stmt.run(p.type, p.title, p.area, p.price, p.bedrooms, p.description, 'Available now', defaultAgency.id); });
             insertAll(seedData);
             console.log(`  Seeded ${seedData.length} properties from seed-data.json`);
         } catch (e) { console.error('Seed failed:', e.message); }

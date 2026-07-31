@@ -21,3 +21,27 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: WHATSAPP_TOKEN
+        sync: false
+      - key: WHATSAPP_PHONE_ID
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN
+        sync: false
+      - key: AGENT_WHATSAPP_NUMBER
+        sync: false
+      - key: AGENT_EMAIL
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_FROM
+        sync: false

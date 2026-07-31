@@ -270,11 +270,11 @@
     <p>© 2025 PropMind. All rights reserved.</p>
   </footer>
 
-  <div id="ghost-widget-container"></div>
-  <script src="/js/ghost.js"></script>
+  <!-- ─── Ghost widget — embeddable, isolated, agency-scoped ─── -->
+  <script src="/widget.js" data-agency="{{AGENCY_SLUG}}" defer></script>
   <script>
     /* ── Analytics Section ─── */
-    fetch('/api/ghost/stats')
+    fetch('/api/ghost/stats?agency={{AGENCY_SLUG}}')
       .then(r => r.json())
       .then(data => {
         document.getElementById('stat-leads').textContent = data.totalLeads ?? 0;
@@ -288,7 +288,7 @@
       .catch(() => {});
 
     /* ── Properties Section ─── */
-    fetch('/api/ghost/properties')
+    fetch('/api/ghost/properties?agency={{AGENCY_SLUG}}')
       .then(r => r.json())
       .then(data => {
         const grid = document.getElementById('properties-grid');

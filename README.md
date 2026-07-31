@@ -47,7 +47,11 @@ Check persistence: `GET /health` returns `persistence` object with live counts.
 ```bash
 npm install
 node server.js
-powershell -File scripts/test-local.ps1
+```
+
+Check WhatsApp credentials (once Meta setup is done):
+```bash
+node scripts/test-whatsapp.js --to +9715XXXXXXXX
 ```
 
 ## Deploy (Render)

@@ -3,6 +3,7 @@ const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
 const { db, parseBudget } = require('../database');
 const { getSilenceProfiles, dismissProfile } = require('../services/silence-decoder');
+const { getDefaultAgency } = require('../services/agencies');
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -253,7 +254,7 @@ router.get('/properties', (req, res) => {
 router.post('/properties', (req, res) => {
     const { type, title, area, price, bedrooms, description, availability } = req.body;
     try {
-        const info = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability) VALUES (?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability || 'Available now');
+        const info = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability || 'Available now', (getDefaultAgency(db) || {}).id);
         res.json({ success: true, id: info.lastInsertRowid });
     } catch (err) {
         console.error('Failed to add property:', err);
@@ -325,9 +326,10 @@ router.post('/properties/bulk', (req, res) => {
     }
     try {
         const stmt = db.prepare(`
-            INSERT INTO properties (type, title, area, price, bedrooms, description, availability)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
+        const defaultAgencyId = (getDefaultAgency(db) || {}).id;
         const insertAll = db.transaction((rows) => {
             const ids = [];
             for (const l of rows) {
@@ -338,7 +340,8 @@ router.post('/properties/bulk', (req, res) => {
                     l.price || '—',
                     l.bedrooms || '—',
                     l.description || '',
-                    l.availability || 'Available now'
+                    l.availability || 'Available now',
+                    defaultAgencyId
                 );
                 ids.push(info.lastInsertRowid);
             }

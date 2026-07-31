@@ -6,27 +6,33 @@ const nodemailer = require('nodemailer');
 const { launchPVIL } = require('../services/post-viewing');
 const { getLaunchMode } = require('../services/launch-mode');
 const { buildSystemPrompt } = require('../services/system-prompt');
+const { resolveAgency } = require('../services/agencies');
+const { notifyLeadCaptured } = require('../services/notifications');
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
 });
 
-// ─── Config endpoint — frontend fetches this to get the agency name ───
+// ─── Config endpoint — frontend fetches this to get the agency identity ───
+// `?agency=<slug>` selects the agency; falls back to the default agency.
 router.get('/config', (req, res) => {
     try {
-        const row = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
-        const agencyName = process.env.AGENCY_NAME || (row ? row.value : 'PropMind Real Estate');
-        res.json({ agencyName });
+        const { agency, agencyName, agencySlug } = resolveAgency(db, req.query.agency);
+        res.json({ agencyName, agencySlug: agencySlug || null, agencyId: agency.id || null });
     } catch (e) {
-        res.json({ agencyName: process.env.AGENCY_NAME || 'PropMind Real Estate' });
+        res.json({ agencyName: 'PropMind Real Estate', agencySlug: null, agencyId: null });
     }
 });
 
 // ─── Public properties listing — no auth required ───
+// `?agency=<slug>` limits results to that agency's inventory.
 router.get('/properties', (req, res) => {
     try {
-        const rows = db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
-        res.json({ properties: rows });
+        const { agencyId, agencySlug } = resolveAgency(db, req.query.agency);
+        const rows = agencyId
+            ? db.prepare(`SELECT * FROM properties WHERE agency_id = ? ORDER BY date DESC`).all(agencyId)
+            : db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
+        res.json({ properties: rows, agency: agencySlug });
     } catch (e) {
         res.status(500).json({ error: 'Database error' });
     }
@@ -35,10 +41,13 @@ router.get('/properties', (req, res) => {
 // ─── Public stats — no auth required (for homepage analytics section) ───
 router.get('/stats', (req, res) => {
     try {
-        const totalLeads = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')`).get().count;
-        const hotLeads = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE hot_score >= 7`).get().count;
-        const allRow = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
-        const bookedRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE status IN ('Visit Scheduled', 'Closed') OR viewing_confirmed = 1`).get().count;
+        const { agencyId } = resolveAgency(db, req.query.agency);
+        const scope = agencyId ? ' AND agency_id = ?' : '';
+        const scopeParams = agencyId ? [agencyId] : [];
+        const totalLeads = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')${scope}`).get(...scopeParams).count;
+        const hotLeads = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE hot_score >= 7${scope}`).get(...scopeParams).count;
+        const allRow = db.prepare(`SELECT COUNT(*) as count FROM leads${agencyId ? ' WHERE agency_id = ?' : ''}`).get(...scopeParams).count;
+        const bookedRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE (status IN ('Visit Scheduled', 'Closed') OR viewing_confirmed = 1)${scope}`).get(...scopeParams).count;
         const conversionRate = allRow > 0 ? Math.round((bookedRow / allRow) * 100) : 0;
         const commissionRow = db.prepare(`SELECT value FROM settings WHERE key = 'weekly_commission'`).get();
         const commission = commissionRow ? parseFloat(commissionRow.value) || 0 : 0;
@@ -50,12 +59,14 @@ router.get('/stats', (req, res) => {
 
 router.post('/chat', async (req, res) => {
     try {
-        const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
-        const agencyName = process.env.AGENCY_NAME || (agencyRow ? agencyRow.value : 'PropMind Real Estate');
+        const { agency, agencyId, agencyName } = resolveAgency(db, req.query.agency);
         const { messages } = req.body; 
         
-        // Fetch properties from DB
-        const properties = db.prepare(`SELECT * FROM properties WHERE availability = 'Available' OR availability = 'Available now'`).all();
+        // Fetch properties for THIS agency
+        const properties = db.prepare(`
+            SELECT * FROM properties
+            WHERE agency_id = ? AND (availability = 'Available' OR availability = 'Available now')
+        `).all(agencyId);
 
         const activeLaunch = getLaunchMode(db);
         const rentals = properties.filter(p => p.type === 'Rent');
@@ -87,13 +98,14 @@ router.post('/chat', async (req, res) => {
             hot_score: Math.min(2 + (preCash ? 3 : 0) + (prePurpose ? 1 : 0) + (preBudget ? 1 : 0) + (preArea ? 1 : 0), 10)
         };
         // Try DB lookup first (for prior turns data), fall back to live extraction
+        // Scope lookups to the current agency so agencies never share leads.
         let leadProfile = null;
         if (phoneInMsg) {
-            leadProfile = db.prepare('SELECT * FROM leads WHERE phone = ?').get(phoneInMsg[0]);
+            leadProfile = db.prepare('SELECT * FROM leads WHERE phone = ? AND agency_id = ?').get(phoneInMsg[0], agencyId);
         }
         if (!leadProfile && preName) {
             const rawName = (preName[1] || preName[0]).trim();
-            leadProfile = db.prepare("SELECT * FROM leads WHERE phone IS NULL AND name = ? ORDER BY id DESC LIMIT 1").get(rawName);
+            leadProfile = db.prepare("SELECT * FROM leads WHERE phone IS NULL AND name = ? AND agency_id = ? ORDER BY id DESC LIMIT 1").get(rawName, agencyId);
         }
         // Merge DB profile (persisted data) with live-extracted data (current turn)
         const mergedProfile = { ...leadProfile, ...liveProfile };
@@ -172,13 +184,19 @@ router.post('/chat', async (req, res) => {
             if (!firstUserMsg) return;
 
             if (phoneVal) {
-                const existing = db.prepare('SELECT id FROM leads WHERE phone = ?').get(phoneVal);
+                const existing = db.prepare('SELECT id FROM leads WHERE phone = ? AND agency_id = ?').get(phoneVal, agencyId);
+                let capturedLead;
                 if (!existing) {
                     const info = db.prepare(`
-                        INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                    `).run(nameVal, phoneVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes);
+                        INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes, agency_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(nameVal, phoneVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes, agencyId);
                     console.log('LEAD SAVED:', info.lastInsertRowid, '| Score:', hotScore, '| Stage:', leadStage, '| Psych:', psychNotes);
+                    capturedLead = {
+                        name: nameVal, phone: phoneVal, budget: budgetVal, area: areaVal,
+                        timeline: timelineVal, hot_score: hotScore, lead_stage: leadStage,
+                        source: 'Website widget', timestamp: new Date().toISOString()
+                    };
                 } else {
                     db.prepare(`
                         UPDATE leads SET
@@ -192,16 +210,24 @@ router.post('/chat', async (req, res) => {
                         WHERE id = ?
                     `).run(nameVal, hotScore, leadStage, budgetVal, timelineVal, areaVal, purposeVal, psychNotes, existing.id);
                     console.log('LEAD UPDATED:', existing.id, '| Score:', hotScore, '| Psych:', psychNotes);
+                    capturedLead = {
+                        name: nameVal, phone: phoneVal, budget: budgetVal, area: areaVal,
+                        timeline: timelineVal, hot_score: hotScore, lead_stage: leadStage,
+                        source: 'Website widget', timestamp: new Date().toISOString()
+                    };
                 }
+                // Push the captured lead to the agency's own WhatsApp / email.
+                notifyLeadCaptured(agency, capturedLead)
+                    .catch(e => console.error('[LEAD NOTIFY ERROR]', e.message));
             } else {
                 // No phone yet — save anonymous partial lead keyed on session
                 const sessionKey = messages[0]?.content?.slice(0, 40) || 'anon';
-                const existing = db.prepare("SELECT id FROM leads WHERE phone IS NULL AND name = ?").get(nameVal === 'Unknown' ? sessionKey : nameVal);
+                const existing = db.prepare("SELECT id FROM leads WHERE phone IS NULL AND name = ? AND agency_id = ?").get(nameVal === 'Unknown' ? sessionKey : nameVal, agencyId);
                 if (!existing) {
                     db.prepare(`
-                        INSERT INTO leads (name, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    `).run(nameVal === 'Unknown' ? 'Visitor' : nameVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes);
+                        INSERT INTO leads (name, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes, agency_id)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    `).run(nameVal === 'Unknown' ? 'Visitor' : nameVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes, agencyId);
                     console.log('PARTIAL LEAD SAVED | Score:', hotScore, '| Psych:', psychNotes);
                 }
             }
@@ -217,8 +243,9 @@ router.post('/chat', async (req, res) => {
 });
 
 router.post('/save-lead', (req, res) => {
-    const { name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes } = req.body;
+    const { name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes, agency_id } = req.body;
     const updateId = req.query.update;
+    const { agency, agencyId } = resolveAgency(db, req.query.agency || req.body.agency);
 
     try {
         let leadId;
@@ -229,53 +256,36 @@ router.post('/save-lead', (req, res) => {
                 UPDATE leads SET 
                     name = ?, phone = ?, budget = ?, timeline = ?,
                     hot_score = ?, lead_stage = ?, signals = ?, recommended_action = ?,
-                    area = ?, bedrooms = ?, visit_time = ?, psychology_notes = ?
+                    area = ?, bedrooms = ?, visit_time = ?, psychology_notes = ?,
+                    agency_id = COALESCE(agency_id, ?)
                 WHERE id = ?
             `).run(name, phone, budget, timeline, hot_score || 0, lead_stage || 'Cold',
                    Array.isArray(signals) ? signals.join(', ') : (signals || ''),
-                   recommended_action, area, bedrooms, visit_time, psychology_notes, updateId);
+                   recommended_action, area, bedrooms, visit_time, psychology_notes,
+                   agency_id || agencyId, updateId);
             leadId = Number(updateId);
             console.log('Lead updated successfully:', leadId);
         } else {
-            // Insert new lead
+            // Insert new lead, owned by the resolved agency
             const info = db.prepare(`
-                INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes, agency_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(name, phone, budget, timeline, hot_score || 0, lead_stage || 'Cold',
                    Array.isArray(signals) ? signals.join(', ') : (signals || ''),
-                   recommended_action, area, bedrooms, visit_time, psychology_notes);
+                   recommended_action, area, bedrooms, visit_time, psychology_notes,
+                   agency_id || agencyId);
             leadId = info.lastInsertRowid;
-            console.log('Lead saved successfully:', leadId, '| Hot score:', hot_score, '| Stage:', lead_stage);
+            console.log('Lead saved successfully:', leadId, '| Hot score:', hot_score, '| Stage:', lead_stage, '| Agency:', agency_id || agencyId);
         }
-        
-        // Send email to agent
-        if (process.env.AGENT_EMAIL && process.env.EMAIL_PASSWORD) {
-            const transporter = nodemailer.createTransport({
-                service: 'gmail',
-                auth: {
-                    user: process.env.AGENT_EMAIL,
-                    pass: process.env.EMAIL_PASSWORD
-                }
-            });
 
-            const mailOptions = {
-                from: process.env.AGENT_EMAIL,
-                to: process.env.AGENT_EMAIL,
-                subject: `New PropMind Lead: ${name} [Score: ${hot_score}/10]`,
-                text: `New lead from GHOST.\n\nName: ${name}\nPhone: ${phone}\nBudget: ${budget}\nArea: ${area}\nBedrooms: ${bedrooms}\nTimeline: ${timeline}\nHot Score: ${hot_score}/10\nStage: ${lead_stage}\nSignals: ${Array.isArray(signals) ? signals.join(', ') : signals}\n\nRecommended Action:\n${recommended_action}\n\nPsychology Notes:\n${psychology_notes}`
-            };
+        // Per-agency notification: WhatsApp to the agency contact (or email).
+        notifyLeadCaptured(agency, {
+            name, phone, budget, area, timeline, bedrooms,
+            hot_score: hot_score || 0, lead_stage: lead_stage || 'Cold',
+            signals: Array.isArray(signals) ? signals.join(', ') : signals,
+            source: 'Website widget', timestamp: new Date().toISOString()
+        }).catch(e => console.error('[LEAD NOTIFY ERROR]', e.message));
 
-            transporter.sendMail(mailOptions, (error, info) => {
-                if (error) {
-                    console.error('Failed to send email:', error);
-                } else {
-                    console.log('Email sent: ' + info.response);
-                }
-            });
-        } else {
-            console.log(`[MOCK EMAIL] Lead: ${name} | Score: ${hot_score} | Phone: ${phone} | Budget: ${budget}`);
-        }
-        
         res.json({ success: true, leadId: leadId });
     } catch (err) {
         console.error('Failed to save lead:', err);

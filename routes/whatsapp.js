@@ -8,6 +8,7 @@ const { assessLead } = require('../services/scorer');
 const { sendReply, sendHotAlert } = require('../services/whatsapp');
 const logger = require('../services/logger');
 const { cancelPVIL } = require('../services/post-viewing');
+const { getDefaultAgency } = require('../services/agencies');
 const { getLaunchMode } = require('../services/launch-mode');
 const { buildSystemPrompt } = require('../services/system-prompt');
 const { updateLastReply } = require('../services/silence-decoder');
@@ -19,6 +20,80 @@ router.use(express.json());
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
 });
+
+// Meta Cloud API webhook verification + media fetch
+const WHATSAPP_VERIFY_TOKEN = process.env.WHATSAPP_VERIFY_TOKEN || 'propmind-verify';
+const META_API_VERSION = process.env.WHATSAPP_API_VERSION || 'v22.0';
+const META_API_BASE = process.env.WHATSAPP_API_BASE || 'https://graph.facebook.com';
+
+async function fetchMetaMediaUrl(mediaId) {
+    if (!mediaId || !process.env.WHATSAPP_TOKEN) return null;
+    try {
+        const r = await fetch(`${META_API_BASE}/${META_API_VERSION}/${mediaId}`, {
+            headers: { Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` }
+        });
+        const d = await r.json().catch(() => ({}));
+        return d.url ? { url: d.url, mimeType: d.mime_type } : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// Normalize both Meta Cloud API and Twilio webhook payloads into one shape.
+async function normalizeInbound(body) {
+    if (!body) return null;
+
+    // ── Meta WhatsApp Cloud API ──
+    if (body.object === 'whatsapp_business_account') {
+        const change = body.entry && body.entry[0] && body.entry[0].changes && body.entry[0].changes[0];
+        const value = change && change.value;
+        if (!value) return null;
+        if (value.statuses) return null; // delivery/read receipt — acknowledge only
+        const msg = value.messages && value.messages[0];
+        if (!msg) return null;
+        if (msg.type === 'reaction' || msg.type === 'button') return null;
+
+        const from = msg.from;
+        let userText = '';
+        let isVoice = false;
+        let mediaUrl = null;
+        let mediaContentType = null;
+
+        if (msg.type === 'text') {
+            userText = (msg.text && msg.text.body || '').trim();
+        } else if (msg.type === 'audio') {
+            isVoice = true;
+            const m = await fetchMetaMediaUrl(msg.audio && msg.audio.id);
+            if (m) { mediaUrl = m.url; mediaContentType = m.mimeType; }
+        } else if (msg.type === 'image' || msg.type === 'video' || msg.type === 'document') {
+            userText = 'The user sent an image or video. Ask if they can describe what they want in text.';
+        }
+
+        return { from, userText, isVoice, mediaUrl, mediaContentType, provider: 'meta' };
+    }
+
+    // ── Twilio ──
+    const From = body.From || body.from || 'unknown';
+    const NumMedia = parseInt(body.NumMedia || '0', 10);
+    let userText = '';
+    let isVoice = false;
+    let mediaUrl = null;
+    let mediaContentType = null;
+
+    if (NumMedia > 0 && body.MediaUrl0) {
+        if (body.MediaContentType0 && body.MediaContentType0.startsWith('audio/')) {
+            isVoice = true;
+            mediaUrl = body.MediaUrl0;
+            mediaContentType = body.MediaContentType0;
+        } else {
+            userText = 'The user sent an image or video. Ask if they can describe what they want in text.';
+        }
+    } else {
+        userText = (body.Body || body.body || '').trim();
+    }
+
+    return { from: From, userText, isVoice, mediaUrl, mediaContentType, provider: 'twilio' };
+}
 
 // ─── In-memory conversation state for WhatsApp sessions ───────────────────
 const sessions = new Map();
@@ -82,14 +157,15 @@ async function finalizeAndScore(from, session) {
 
     try {
         db.prepare(`
-            INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes, agency_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
             leadPayload.name, leadPayload.phone, leadPayload.budget, leadPayload.timeline,
             leadPayload.hot_score, leadPayload.lead_stage,
             Array.isArray(scoring.signals) ? scoring.signals.join(', ') : '',
             scoring.recommended_action,
-            leadPayload.area, leadPayload.bedrooms, '', leadPayload.psychology_notes
+            leadPayload.area, leadPayload.bedrooms, '', leadPayload.psychology_notes,
+            (getDefaultAgency(db) || {}).id
         );
         logger.logEvent('scorer', { action: 'lead_saved', from, name: leadPayload.name, score: scoring.hot_score });
 
@@ -118,10 +194,22 @@ async function finalizeAndScore(from, session) {
             budget: leadPayload.budget || 'Unknown',
             interest: scoring.signals.join(', ') || 'Property inquiry',
             phone: leadPayload.phone || from,
+            hot_score: scoring.hot_score,
+            lead_stage: scoring.lead_stage,
             timestamp: new Date().toISOString()
         };
-        const alertResult = await sendHotAlert(hotInfo);
-        logger.logEvent('scorer', { action: 'hot_alert_sent', from, result: alertResult });
+        // Route the alert to the agency's own contact (WhatsApp or email).
+        const agency = getDefaultAgency(db);
+        const alertDest = (agency && (agency.contact || agency.whatsapp))
+            || process.env.AGENT_WHATSAPP_NUMBER || '';
+        let alertResult;
+        if (alertDest && /@/.test(alertDest)) {
+            const { notifyLeadCaptured } = require('../services/notifications');
+            alertResult = await notifyLeadCaptured(agency, { ...hotInfo, source: 'WhatsApp inbound' });
+        } else {
+            alertResult = await sendHotAlert(alertDest, hotInfo);
+        }
+        logger.logEvent('scorer', { action: 'hot_alert_sent', from, to: alertDest, result: alertResult });
     }
 }
 
@@ -215,13 +303,35 @@ async function processMessage(from, userText, isVoice = false, transcriptionCost
     return { reply: cleanText, leadData };
 }
 
-// ─── WhatsApp webhook: incoming message ───────────────────────────────────
+// ─── WhatsApp webhook: Meta subscription verification ──────────────────────
+router.get('/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+    if (mode === 'subscribe' && token === WHATSAPP_VERIFY_TOKEN) {
+        logger.logEvent('whatsapp', { action: 'webhook_verified', provider: 'meta' });
+        return res.status(200).send(challenge);
+    }
+    logger.logEvent('whatsapp', { action: 'webhook_verify_failed', mode, token: token ? '[provided]' : undefined });
+    return res.sendStatus(403);
+});
+
+// ─── WhatsApp webhook: incoming message (Meta Cloud API + Twilio) ──────────
 router.post('/webhook', async (req, res) => {
     try {
-        const { From, Body, NumMedia, MediaUrl0, MediaContentType0 } = req.body;
+        const isMeta = !!(req.body && req.body.object === 'whatsapp_business_account');
+        const inbound = await normalizeInbound(req.body);
 
-        const from = From || req.body.from || 'unknown';
-        logger.logEvent('whatsapp', { action: 'webhook_received', from, hasMedia: NumMedia > 0 });
+        // Acknowledge immediately — Meta/Twilio retry on non-200 and that would
+        // duplicate processing. Replies are sent via the API, not the webhook.
+        if (isMeta) res.sendStatus(200);
+        else res.json({ received: true });
+
+        if (!inbound || !inbound.userText) return; // status updates / empty
+
+        const { from, userText, isVoice, mediaUrl, mediaContentType, provider } = inbound;
+        let transcriptionCost = 0;
+        logger.logEvent('whatsapp', { action: 'webhook_received', from, provider, hasMedia: !!mediaUrl });
 
         // PVIL auto-cancel: if lead replies during active sequence, stop it
         const existingLead = db.prepare('SELECT * FROM leads WHERE phone = ?').get(from);
@@ -234,48 +344,31 @@ router.post('/webhook', async (req, res) => {
             updateLastReply(db, existingLead.id);
         }
 
-        let userText = '';
-        let isVoice = false;
-        let transcriptionCost = 0;
+        if (isVoice && mediaUrl) {
+            logger.logEvent('transcription', { action: 'voice_note_received', from, mediaUrl, contentType: mediaContentType });
 
-        if (NumMedia > 0 && MediaUrl0) {
-            if (MediaContentType0 && MediaContentType0.startsWith('audio/')) {
-                isVoice = true;
-                logger.logEvent('transcription', { action: 'voice_note_received', from, mediaUrl: MediaUrl0, contentType: MediaContentType0 });
+            const transcription = await transcribeVoiceNote(mediaUrl);
+            userText = transcription.text;
+            transcriptionCost = transcription.cost;
+            const confidence = transcription.confidence;
 
-                const transcription = await transcribeVoiceNote(MediaUrl0);
-                userText = transcription.text;
-                transcriptionCost = transcription.cost;
-                const confidence = transcription.confidence;
+            logger.logEvent('transcription', {
+                action: 'voice_note_processed',
+                from,
+                text: userText,
+                confidence,
+                cost: transcriptionCost,
+                duration: transcription.duration,
+                detectedLang: transcription.language
+            });
 
-                logger.logEvent('transcription', {
-                    action: 'voice_note_processed',
-                    from,
-                    text: userText,
-                    confidence,
-                    cost: transcriptionCost,
-                    duration: transcription.duration,
-                    detectedLang: transcription.language
-                });
-
-                if (confidence < -2 || !userText || userText.length < 3) {
-                    const clarifyMsg = "I received your voice note but couldn't understand it clearly. Could you please type your message or send another voice note?";
-                    const session = getSession(from);
-                    session.messages.push({ role: 'assistant', content: clarifyMsg });
-                    // NEW: Actually send the clarifying reply back to WhatsApp before responding to the webhook
-                    await sendReply(from, clarifyMsg).catch(e => logger.logEvent('whatsapp', { action: 'clarify_send_error', from, error: e.message }));
-                    res.json({ reply: clarifyMsg });
-                    return;
-                }
-            } else {
-                userText = 'The user sent an image or video. Ask if they can describe what they want in text.';
+            if (confidence < -2 || !userText || userText.length < 3) {
+                const clarifyMsg = "I received your voice note but couldn't understand it clearly. Could you please type your message or send another voice note?";
+                const session = getSession(from);
+                session.messages.push({ role: 'assistant', content: clarifyMsg });
+                await sendReply(from, clarifyMsg).catch(e => logger.logEvent('whatsapp', { action: 'clarify_send_error', from, error: e.message }));
+                return;
             }
-        } else {
-            userText = (Body || req.body.body || '').trim();
-        }
-
-        if (!userText) {
-            return res.status(400).json({ error: 'No message content' });
         }
 
         const result = await processMessage(from, userText, isVoice, transcriptionCost);
@@ -287,17 +380,11 @@ router.post('/webhook', async (req, res) => {
 
         // Send the reply back to the user via WhatsApp
         const sendResult = await sendReply(from, result.reply);
-
-        res.json({
-            reply: result.reply,
-            from,
-            leadData: result.leadData,
-            sent: sendResult
-        });
+        logger.logEvent('whatsapp', { action: 'reply_sent', from, result: sendResult });
     } catch (err) {
         logger.logEvent('whatsapp', { action: 'webhook_error', error: err.message });
         console.error('WhatsApp webhook error:', err.message);
-        res.status(500).json({ error: 'Failed to process message' });
+        if (!res.headersSent) res.status(500).json({ error: 'Failed to process message' });
     }
 });
 
