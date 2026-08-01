@@ -201,12 +201,19 @@ function initDb() {
     const defaultAgencySlug = process.env.AGENCY_SLUG
         || defaultAgencyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
         || 'propmind';
-    const defaultContact = process.env.AGENT_WHATSAPP_NUMBER || process.env.AGENCY_WHATSAPP || '';
+    const defaultContact = process.env.AGENT_EMAIL || process.env.AGENT_WHATSAPP_NUMBER || process.env.AGENCY_WHATSAPP || '';
     db.prepare(`
         INSERT OR IGNORE INTO agencies (slug, name, whatsapp, contact)
         VALUES (?, ?, ?, ?)
     `).run(defaultAgencySlug, defaultAgencyName, defaultContact, defaultContact);
     const defaultAgency = db.prepare(`SELECT * FROM agencies ORDER BY id ASC LIMIT 1`).get();
+
+    // Idempotent contact fill: a redeploy with AGENT_EMAIL set must activate
+    // email notifications even if an older boot already created the row empty.
+    if (defaultAgency && !defaultAgency.contact) {
+        db.prepare(`UPDATE agencies SET contact = ? WHERE id = ?`).run(defaultContact, defaultAgency.id);
+        defaultAgency.contact = defaultContact;
+    }
 
     // Backfill legacy rows so nothing is left orphaned
     db.prepare(`

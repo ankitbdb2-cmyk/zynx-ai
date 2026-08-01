@@ -106,6 +106,10 @@ async function sendEmail(dest, subject, textBody, htmlBody) {
             html: htmlBody || undefined
         });
         console.log(`[EMAIL SENT → ${dest}] messageId=${info.messageId}`);
+        const preview = process.env.SMTP_HOST && process.env.SMTP_HOST.includes('ethereal')
+            ? nodemailer.getTestMessageUrl(info)
+            : null;
+        if (preview) console.log(`[EMAIL PREVIEW] ${preview}`);
         logger.logEvent('notify', { action: 'email_sent', to: dest, subject, messageId: info.messageId });
         return { success: true, mode: 'email', to: dest, messageId: info.messageId };
     } catch (err) {
