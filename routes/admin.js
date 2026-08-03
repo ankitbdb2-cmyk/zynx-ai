@@ -1,9 +1,34 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const Anthropic = require('@anthropic-ai/sdk');
 const { db, parseBudget } = require('../database');
 const { getSilenceProfiles, dismissProfile } = require('../services/silence-decoder');
 const { getDefaultAgency } = require('../services/agencies');
+
+// ─── ADMIN AUTH — every /api/admin/* route requires the admin secret ───────
+// Header: Authorization: Bearer <ADMIN_SECRET>   OR   x-admin-secret: <ADMIN_SECRET>
+// Missing/wrong header → 401 with an empty body. Constant-time comparison.
+// Fail-closed: if ADMIN_SECRET is not set, all admin routes return 401.
+function safeEqual(a, b) {
+    const ha = crypto.createHash('sha256').update(String(a == null ? '' : a)).digest();
+    const hb = crypto.createHash('sha256').update(String(b == null ? '' : b)).digest();
+    return crypto.timingSafeEqual(ha, hb);
+}
+
+function requireAdmin(req, res, next) {
+    const expected = process.env.ADMIN_SECRET || '';
+    if (!expected) return res.status(401).end();
+    let provided = '';
+    const auth = req.headers['authorization'] || '';
+    const m = auth.match(/^Bearer\s+(.+)$/i);
+    if (m) provided = m[1].trim();
+    else if (req.headers['x-admin-secret']) provided = String(req.headers['x-admin-secret']).trim();
+    if (!provided || !safeEqual(provided, expected)) return res.status(401).end();
+    next();
+}
+
+router.use(requireAdmin);
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY

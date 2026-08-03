@@ -33,12 +33,24 @@ document.addEventListener('DOMContentLoaded', () => {
   let parsedListingsStore = [];
   let launchCountdownInterval = null;
   let silencePanelLoaded = false;
+  let adminSecret = '';
+
+  // Attach the admin secret header to every /api/admin/* request.
+  const origFetch = window.fetch;
+  window.fetch = function (url, opts) {
+    opts = opts || {};
+    if (typeof url === 'string' && url.indexOf('/api/admin') === 0 && adminSecret) {
+      opts.headers = Object.assign({}, opts.headers, { 'x-admin-secret': adminSecret });
+    }
+    return origFetch(url, opts);
+  };
 
   /* ── Auth ─────────────────────────────────────── */
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const username = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
+    adminSecret = document.getElementById('admin-secret').value.trim();
 
     try {
       const res = await fetch('/api/admin/login', {
