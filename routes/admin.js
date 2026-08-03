@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 const Anthropic = require('@anthropic-ai/sdk');
 const { db, parseBudget } = require('../database');
 const { getSilenceProfiles, dismissProfile } = require('../services/silence-decoder');
@@ -537,5 +539,86 @@ router.get('/leads/:id/silence-profile', (req, res) => {
 });
 
 // ── END SILENCE DECODER ROUTES ──────────────────────────────────────────────
+
+// ─── DIAGNOSTICS (read-only) — verify live env/DB/notify state ──────────────
+// Requires the same admin secret as every /api/admin route. Returns masked
+// secrets, the real agencies.contact value, and today's notify/whatsapp log
+// entries so the notification routing can be verified against production data.
+const LOG_DIR = path.join(__dirname, '..', 'logs');
+const MASK_PHONE_RE = /\d{7,15}/;
+
+function maskValue(s, keep = 3) {
+    const str = String(s == null ? '' : s);
+    if (!str) return '';
+    if (str.length <= keep * 2 + 3) return str.slice(0, keep) + '***';
+    return str.slice(0, keep) + '***' + str.slice(-keep);
+}
+
+function maskPhones(value) {
+    return JSON.parse(JSON.stringify(value, (k, v) =>
+        (typeof v === 'string' ? v.replace(MASK_PHONE_RE, (m) => m.slice(0, 3) + '***' + m.slice(-2)) : v)
+    ));
+}
+
+router.get('/diag', (req, res) => {
+    const envFlag = (key) => ({ key, set: process.env[key] !== undefined, value: process.env[key] === undefined ? null : maskValue(process.env[key]) });
+    const readLogTail = (category, n = 25) => {
+        const file = path.join(LOG_DIR, `${category}-${new Date().toISOString().slice(0, 10)}.log`);
+        try {
+            const lines = fs.readFileSync(file, 'utf8').trim().split('\n').slice(-n);
+            return lines.map((l) => { try { return JSON.parse(l); } catch { return { raw: l.slice(0, 400) }; } });
+        } catch (e) {
+            return { file, error: e.message };
+        }
+    };
+
+    let agencies = [];
+    try {
+        agencies = db.prepare('SELECT id, slug, name, whatsapp, contact, created_at FROM agencies ORDER BY id').all();
+    } catch (e) { agencies = [{ error: e.message }]; }
+
+    let leads = [];
+    let leadCount = null;
+    let propertyCount = null;
+    try {
+        leadCount = db.prepare('SELECT COUNT(*) c FROM leads').get().c;
+        propertyCount = db.prepare('SELECT COUNT(*) c FROM properties').get().c;
+        leads = db.prepare('SELECT id, name, phone, budget, hot_score, lead_stage, date, agency_id FROM leads ORDER BY id DESC LIMIT 20').all();
+    } catch (e) { leads = [{ error: e.message }]; }
+
+    const dbPath = db.dbPath || '';
+    let dbExists = false;
+    let dbStat = null;
+    try { dbExists = fs.existsSync(dbPath); if (dbExists) dbStat = fs.statSync(dbPath); } catch { /* ignore */ }
+
+    res.json({
+        now: new Date().toISOString(),
+        env: {
+            AGENT_EMAIL: envFlag('AGENT_EMAIL'),
+            EMAIL_PASSWORD: envFlag('EMAIL_PASSWORD'),
+            AGENT_WHATSAPP_NUMBER: envFlag('AGENT_WHATSAPP_NUMBER'),
+            AGENCY_WHATSAPP: envFlag('AGENCY_WHATSAPP'),
+            SMTP_HOST: envFlag('SMTP_HOST'),
+            SMTP_PORT: envFlag('SMTP_PORT'),
+            SMTP_USER: envFlag('SMTP_USER'),
+            SMTP_FROM: envFlag('SMTP_FROM'),
+            ADMIN_SECRET: envFlag('ADMIN_SECRET'),
+            RENDER: envFlag('RENDER'),
+            NODE_ENV: envFlag('NODE_ENV')
+        },
+        db: {
+            dbPath,
+            dbExists,
+            dbSizeBytes: dbStat ? dbStat.size : null,
+            dbMtime: dbStat ? dbStat.mtime.toISOString() : null,
+            propertyCount,
+            leadCount
+        },
+        agencies,
+        leads: maskPhones(leads),
+        notifyLogTail: maskPhones(readLogTail('notify')),
+        whatsappLogTail: maskPhones(readLogTail('whatsapp'))
+    });
+});
 
 module.exports = router;
