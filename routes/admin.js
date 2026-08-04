@@ -264,6 +264,45 @@ router.get('/viewings', async (req, res) => {
     }
 });
 
+// ─── AGENCY MANAGEMENT ────────────────────────────────────────────────────────
+router.get('/agencies', async (req, res) => {
+    try {
+        const rows = await db.prepare('SELECT * FROM agencies ORDER BY id ASC').all();
+        res.json({ agencies: rows });
+    } catch (err) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.post('/agencies', async (req, res) => {
+    const { name, slug, whatsapp, contact } = req.body;
+    if (!name || !slug) return res.status(400).json({ error: 'name and slug required' });
+    try {
+        const info = await db.prepare(
+            'INSERT INTO agencies (slug, name, whatsapp, contact) VALUES (?, ?, ?, ?)'
+        ).run(slug, name, whatsapp || '', contact || '');
+        res.json({ success: true, id: info.lastInsertRowid, slug });
+    } catch (err) {
+        if (String(err.message).includes('UNIQUE')) return res.status(409).json({ error: 'slug already exists' });
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+router.post('/agencies/:id/properties', async (req, res) => {
+    const { type, title, area, price, bedrooms, description, availability } = req.body;
+    if (!title) return res.status(400).json({ error: 'title required' });
+    try {
+        const agency = await db.prepare('SELECT id FROM agencies WHERE id = ?').get(req.params.id);
+        if (!agency) return res.status(404).json({ error: 'agency not found' });
+        const info = await db.prepare(
+            'INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+        ).run(type || 'Sale', title, area || '', price || '', bedrooms || '', description || '', availability || 'Available now', agency.id);
+        res.json({ success: true, id: info.lastInsertRowid });
+    } catch (err) {
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
 // Property Management
 router.get('/properties', async (req, res) => {
     try {
