@@ -34,6 +34,20 @@ document.addEventListener('DOMContentLoaded', () => {
   let launchCountdownInterval = null;
   let silencePanelLoaded = false;
   let adminSecret = '';
+  let agencyScopeId = null;
+
+  async function getAgencyScopeId() {
+    if (agencyScopeId) return agencyScopeId;
+    try {
+      const res = await fetch('/api/admin/agencies');
+      const data = await res.json();
+      const rows = data && data.agencies;
+      if (Array.isArray(rows) && rows.length > 0) {
+        agencyScopeId = rows[0].id;
+      }
+    } catch { /* fall back to null */ }
+    return agencyScopeId;
+  }
 
   // Attach the admin secret header to every /api/admin/* request.
   const origFetch = window.fetch;
@@ -424,10 +438,11 @@ document.addEventListener('DOMContentLoaded', () => {
     btnSaveAll.textContent = 'Saving...';
 
     try {
+      const agencyId = await getAgencyScopeId();
       const res = await fetch('/api/admin/properties/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ listings: parsedListingsStore })
+        body: JSON.stringify({ listings: parsedListingsStore, agency_id: agencyId })
       });
 
       if (res.ok) {
@@ -452,7 +467,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!confirm('Are you sure you want to delete ALL listings? This cannot be undone.')) return;
     if (!confirm('⚠️ FINAL WARNING: This will permanently erase every property from the database.')) return;
     try {
-      const res = await fetch('/api/admin/properties/all', { method: 'DELETE' });
+      const agencyId = await getAgencyScopeId();
+      const res = await fetch('/api/admin/properties/all?agency_id=' + encodeURIComponent(agencyId), { method: 'DELETE' });
       if (res.ok) {
         alert('All listings deleted successfully.');
         loadDashboard();

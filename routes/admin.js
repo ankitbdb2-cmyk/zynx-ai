@@ -314,15 +314,53 @@ router.get('/properties', async (req, res) => {
     }
 });
 
+async function resolveAdminAgencyId(db, { agency_id, agency }, { required = false } = {}) {
+    if (agency_id !== undefined && agency_id !== null && agency_id !== '') {
+        const n = Number(agency_id);
+        if (!Number.isInteger(n) || n <= 0) {
+            const e = new Error('invalid agency_id');
+            e.status = 400;
+            e.publicMessage = 'invalid agency_id';
+            throw e;
+        }
+        return n;
+    }
+    if (agency) {
+        const row = await db.prepare('SELECT id FROM agencies WHERE slug = ?').get(String(agency).trim());
+        if (!row) {
+            const e = new Error('agency not found');
+            e.status = 400;
+            e.publicMessage = `agency "${agency}" not found`;
+            throw e;
+        }
+        return row.id;
+    }
+    if (required) {
+        const e = new Error('agency scope required');
+        e.status = 400;
+        e.publicMessage = 'agency_id or agency required — refusing to act across all agencies';
+        throw e;
+    }
+    const def = await getDefaultAgency(db);
+    if (!def) {
+        const e = new Error('no default agency');
+        e.status = 500;
+        e.publicMessage = 'no default agency configured';
+        throw e;
+    }
+    console.warn(`[ADMIN] operation defaulted to agency id=${def.id} slug="${def.slug}" — pass agency_id/agency to scope explicitly`);
+    return def.id;
+}
+
 router.post('/properties', async (req, res) => {
-    const { type, title, area, price, bedrooms, description, availability } = req.body;
+    const { type, title, area, price, bedrooms, description, availability, agency_id, agency } = req.body;
     try {
-        const defaultAgency = await getDefaultAgency(db);
-        const info = await db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability || 'Available now', (defaultAgency || {}).id);
-        res.json({ success: true, id: info.lastInsertRowid });
+        const targetId = await resolveAdminAgencyId(db, { agency_id, agency });
+        const info = await db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability || 'Available now', targetId);
+        res.json({ success: true, id: info.lastInsertRowid, agency_id: targetId });
     } catch (err) {
         console.error('Failed to add property:', err);
-        res.status(500).json({ error: 'Database error' });
+        res.status(err.status || 500).json({ error: err.publicMessage || 'Database error' });
     }
 });
 
@@ -384,16 +422,16 @@ router.post('/properties/parse-paste', handleExtractListings);
 router.post('/extract-listings', handleExtractListings);
 
 router.post('/properties/bulk', async (req, res) => {
-    const { listings } = req.body;
+    const { listings, agency_id, agency } = req.body;
     if (!Array.isArray(listings) || listings.length === 0) {
         return res.status(400).json({ error: 'listings array required' });
     }
     try {
+        const targetId = await resolveAdminAgencyId(db, { agency_id, agency }, { required: true });
         const stmt = db.prepare(`
             INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        const defaultAgencyId = (await getDefaultAgency(db) || {}).id;
         const ids = [];
         for (const l of listings) {
             const info = await stmt.run(
@@ -404,34 +442,46 @@ router.post('/properties/bulk', async (req, res) => {
                 l.bedrooms || '—',
                 l.description || '',
                 l.availability || 'Available now',
-                defaultAgencyId
+                targetId
             );
             ids.push(info.lastInsertRowid);
         }
-        res.json({ success: true, saved: ids.length, ids });
+        res.json({ success: true, saved: ids.length, ids, agency_id: targetId });
     } catch (err) {
         console.error('Bulk save error:', err);
-        res.status(500).json({ error: 'Database error' });
+        res.status(err.status || 500).json({ error: err.publicMessage || 'Database error' });
     }
 });
 
 router.delete('/properties/all', async (req, res) => {
+    const { agency_id, agency } = req.query;
     try {
-        await db.prepare(`DELETE FROM properties`).run();
-        res.json({ success: true });
+        const targetId = await resolveAdminAgencyId(db, { agency_id, agency }, { required: true });
+        const info = await db.prepare(`DELETE FROM properties WHERE agency_id = ?`).run(targetId);
+        res.json({ success: true, deleted: info.changes, agency_id: targetId });
     } catch (err) {
-        console.error('Failed to delete all properties:', err);
-        res.status(500).json({ error: 'Database error' });
+        console.error('Failed to delete properties:', err);
+        res.status(err.status || 500).json({ error: err.publicMessage || 'Database error' });
     }
 });
 
 router.delete('/properties/:id', async (req, res) => {
+    const { agency_id, agency } = req.query;
     try {
-        await db.prepare(`DELETE FROM properties WHERE id = ?`).run(req.params.id);
+        const id = req.params.id;
+        if (agency_id !== undefined || agency) {
+            const targetId = await resolveAdminAgencyId(db, { agency_id, agency });
+            const info = await db.prepare(`DELETE FROM properties WHERE id = ? AND agency_id = ?`).run(id, targetId);
+            if (info.changes === 0) {
+                return res.status(404).json({ error: 'Property not found in this agency' });
+            }
+            return res.json({ success: true, agency_id: targetId });
+        }
+        await db.prepare(`DELETE FROM properties WHERE id = ?`).run(id);
         res.json({ success: true });
     } catch (err) {
         console.error('Failed to delete property:', err);
-        res.status(500).json({ error: 'Database error' });
+        res.status(err.status || 500).json({ error: err.publicMessage || 'Database error' });
     }
 });
 
