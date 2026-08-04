@@ -94,7 +94,7 @@ function getNIMWeightAdjustment(detectedLanguage, messages) {
   return Math.min(adjustment, 3); // hard cap — max +3 regardless of nationality
 }
 
-function assessLead(messages, leadProfile) {
+async function assessLead(messages, leadProfile) {
     const allText = messages
         .filter(m => m.role === 'user')
         .map(m => m.content)
@@ -128,7 +128,7 @@ function assessLead(messages, leadProfile) {
     let adjustedScore = Math.min(score + nimAdjustment, 10);
 
     // ── LAUNCH MODE SCORING ─────────────────────────────────────────────────
-    const launchAdj = getLaunchScoringAdjustments(db);
+    const launchAdj = await getLaunchScoringAdjustments(db);
     let launchMode = false;
     let showroomOverride = false;
 

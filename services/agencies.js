@@ -1,22 +1,22 @@
 // ─── AGENCY RESOLUTION ─────────────────────────────────────────────────────
-// Multi-tenant helpers. Synchronous only (better-sqlite3).
+// Multi-tenant helpers. All DB access is async (libSQL client).
 // The agencies table is created and backfilled by database.js on startup.
 
-function getAgencies(db) {
+async function getAgencies(db) {
     return db.prepare(`SELECT id, slug, name, whatsapp, contact FROM agencies ORDER BY id ASC`).all();
 }
 
-function getAgencyBySlug(db, slug) {
+async function getAgencyBySlug(db, slug) {
     if (!slug) return null;
     return db.prepare(`SELECT * FROM agencies WHERE slug = ?`).get(String(slug).trim().toLowerCase());
 }
 
-function getAgencyById(db, id) {
+async function getAgencyById(db, id) {
     if (!id) return null;
     return db.prepare(`SELECT * FROM agencies WHERE id = ?`).get(id);
 }
 
-function getDefaultAgency(db) {
+async function getDefaultAgency(db) {
     return db.prepare(`SELECT * FROM agencies ORDER BY id ASC LIMIT 1`).get() || null;
 }
 
@@ -24,9 +24,9 @@ function getDefaultAgency(db) {
 //   - valid slug  → that agency
 //   - missing/invalid slug → the default agency (legacy behaviour)
 // Always returns an agency object (never throws).
-function resolveAgency(db, slug) {
-    const requested = slug ? getAgencyBySlug(db, slug) : null;
-    const agency = requested || getDefaultAgency(db) || {
+async function resolveAgency(db, slug) {
+    const requested = slug ? await getAgencyBySlug(db, slug) : null;
+    const agency = requested || await getDefaultAgency(db) || {
         id: null,
         slug: null,
         name: 'PropMind Real Estate',

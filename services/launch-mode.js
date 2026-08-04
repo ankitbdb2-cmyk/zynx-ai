@@ -1,8 +1,8 @@
 // ─── LAUNCH MODE ENGINE ─────────────────────────────────────────────────────
-// Synchronous only — all DB calls use better-sqlite3 (no async/await)
+// All DB calls are async (libSQL client).
 
-function getLaunchMode(db) {
-    const launch = db.prepare(`
+async function getLaunchMode(db) {
+    const launch = await db.prepare(`
         SELECT * FROM launches
         WHERE active = 1
           AND (expires_at IS NULL OR expires_at > datetime('now'))
@@ -12,12 +12,12 @@ function getLaunchMode(db) {
     return launch || null;
 }
 
-function activateLaunch(db, launchData) {
+async function activateLaunch(db, launchData) {
     // Step 1 — deactivate any currently active launch
-    db.prepare('UPDATE launches SET active = 0 WHERE active = 1').run();
+    await db.prepare('UPDATE launches SET active = 0 WHERE active = 1').run();
 
     // Step 2 — insert new launch with 72-hour auto-expiry
-    const result = db.prepare(`
+    const result = await db.prepare(`
         INSERT INTO launches
             (developer, project, payment_plan, handover_date,
              price_floor, golden_visa, roi_projection, notes,
@@ -39,22 +39,22 @@ function activateLaunch(db, launchData) {
              .get(result.lastInsertRowid);
 }
 
-function deactivateLaunch(db, launchId) {
-    db.prepare('UPDATE launches SET active = 0 WHERE id = ?').run(launchId);
+async function deactivateLaunch(db, launchId) {
+    await db.prepare('UPDATE launches SET active = 0 WHERE id = ?').run(launchId);
     return { deactivated: true, id: launchId };
 }
 
-function extendLaunch(db, launchId, hours) {
+async function extendLaunch(db, launchId, hours) {
     hours = parseInt(hours) || 24;
-    db.prepare(
+    await db.prepare(
         `UPDATE launches SET expires_at = datetime(expires_at, '+${hours} hours')
          WHERE id = ?`
     ).run(launchId);
     return { extended: true, id: launchId, hoursAdded: hours };
 }
 
-function checkAndExpireLaunches(db) {
-    const expired = db.prepare(`
+async function checkAndExpireLaunches(db) {
+    const expired = await db.prepare(`
         SELECT id FROM launches
         WHERE active = 1
           AND expires_at IS NOT NULL
@@ -62,7 +62,7 @@ function checkAndExpireLaunches(db) {
     `).all();
 
     for (const row of expired) {
-        db.prepare('UPDATE launches SET active = 0 WHERE id = ?').run(row.id);
+        await db.prepare('UPDATE launches SET active = 0 WHERE id = ?').run(row.id);
     }
 
     return { expired: expired.length };
@@ -120,8 +120,8 @@ function buildLaunchOverlay(launch) {
      .join('\n');
 }
 
-function getLaunchScoringAdjustments(db) {
-    const launch = getLaunchMode(db);
+async function getLaunchScoringAdjustments(db) {
+    const launch = await getLaunchMode(db);
 
     if (!launch) return { active: false };
 

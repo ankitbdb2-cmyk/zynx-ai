@@ -5,13 +5,9 @@ services:
     runtime: node
     region: oregon
     plan: free
-    buildCommand: npm install && npm rebuild better-sqlite3
+    buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
-    disk:
-      name: data
-      mountPath: /opt/render/project/data
-      sizeGB: 1
     envVars:
       - key: NODE_VERSION
         value: 18.20.4
@@ -31,6 +27,12 @@ services:
         sync: false
       - key: AGENT_EMAIL
         sync: false
+      - key: ADMIN_SECRET
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
       - key: EMAIL_PASSWORD
         sync: false
       - key: SMTP_HOST
@@ -44,4 +46,8 @@ services:
       - key: SMTP_SECURE
         sync: false
       - key: SMTP_FROM
+        sync: false
+      - key: TURSO_URL
+        sync: false
+      - key: TURSO_TOKEN
         sync: false

@@ -29,29 +29,29 @@ function sendEmail(subject, body) {
       });
 }
 
-function launchPVIL(db, leadId) {
-    const lead = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
+async function launchPVIL(db, leadId) {
+    const lead = await db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
     if (!lead) return { error: 'Lead not found' };
 
     if (lead.pv_launched_at) {
         return { alreadyLaunched: true, lead };
     }
 
-    db.prepare(`
+    await db.prepare(`
         UPDATE leads SET pv_launched_at = datetime('now'), pv_state = 'step0_launched'
         WHERE id = ?
     `).run(leadId);
 
-    const updated = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
+    const updated = await db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
     return { alreadyLaunched: false, lead: updated };
 }
 
-function cancelPVIL(db, leadId) {
-    db.prepare(`UPDATE leads SET pv_state = 'engaged' WHERE id = ?`).run(leadId);
+async function cancelPVIL(db, leadId) {
+    await db.prepare(`UPDATE leads SET pv_state = 'engaged' WHERE id = ?`).run(leadId);
     return { cancelled: true };
 }
 
-function sendStep1(db, lead) {
+async function sendStep1(db, lead) {
     const phone = lead.phone || 'unknown';
     console.log(`[PVIL Step 1 WhatsApp → ${phone}]: "Just wanted to make sure you got back alright — the traffic can be unpredictable. Did anything stand out for you today?"`);
 
@@ -67,13 +67,11 @@ If they reply within 2 hours: they are still active.
 Move to close conversation immediately.
 If no reply by 24h: Step 2 coaching arrives automatically.`;
 
-    return sendEmail(`PVIL Step 1: Re-engagement sent → ${lead.name}`, body)
-        .then(() => {
-            db.prepare(`UPDATE leads SET pv_state = 'step1_sent' WHERE id = ?`).run(lead.id);
-        });
+    await sendEmail(`PVIL Step 1: Re-engagement sent → ${lead.name}`, body);
+    await db.prepare(`UPDATE leads SET pv_state = 'step1_sent' WHERE id = ?`).run(lead.id);
 }
 
-function sendStep2(db, lead) {
+async function sendStep2(db, lead) {
     const body = `${lead.name} has not responded. They are in the 24h comparison window.
 They have likely viewed 2–3 other properties this week.
 
@@ -87,13 +85,11 @@ Budget range: ${lead.budget || 'not specified'}
 Signals recorded: ${lead.signals || 'none'}
 Recommended action from system: ${lead.recommended_action || 'none'}`;
 
-    return sendEmail(`PVIL Step 2: Competitive positioning → ${lead.name}`, body)
-        .then(() => {
-            db.prepare(`UPDATE leads SET pv_state = 'step2_sent' WHERE id = ?`).run(lead.id);
-        });
+    await sendEmail(`PVIL Step 2: Competitive positioning → ${lead.name}`, body);
+    await db.prepare(`UPDATE leads SET pv_state = 'step2_sent' WHERE id = ?`).run(lead.id);
 }
 
-function sendStep3(db, lead) {
+async function sendStep3(db, lead) {
     const budgetNum = parseInt(String(lead.budget || '0').replace(/[^0-9]/g, '')) || 0;
 
     if (budgetNum >= 2000000) {
@@ -105,10 +101,8 @@ MESSAGE TO SEND (WhatsApp — casual, informational tone):
 CRITICAL: Frame this as information, not a sales tactic.
 No urgency language. No "limited time." Just facts.`;
 
-        return sendEmail(`PVIL Step 3: Golden Visa trigger → ${lead.name}`, body)
-            .then(() => {
-                db.prepare(`UPDATE leads SET pv_state = 'step3_sent' WHERE id = ?`).run(lead.id);
-            });
+        await sendEmail(`PVIL Step 3: Golden Visa trigger → ${lead.name}`, body);
+        await db.prepare(`UPDATE leads SET pv_state = 'step3_sent' WHERE id = ?`).run(lead.id);
     }
 
     const body = `${lead.name} | Budget: ${lead.budget || 'not specified'}
@@ -119,13 +113,11 @@ MESSAGE TO SEND:
 Offer information. Do not push for a decision.
 Signals: ${lead.signals || 'none'}`;
 
-    return sendEmail(`PVIL Step 3: Value reinforcement → ${lead.name}`, body)
-        .then(() => {
-            db.prepare(`UPDATE leads SET pv_state = 'step3_sent' WHERE id = ?`).run(lead.id);
-        });
+    await sendEmail(`PVIL Step 3: Value reinforcement → ${lead.name}`, body);
+    await db.prepare(`UPDATE leads SET pv_state = 'step3_sent' WHERE id = ?`).run(lead.id);
 }
 
-function sendStep4(db, lead) {
+async function sendStep4(db, lead) {
     const nat = (lead.nationality || '').toLowerCase();
     let script;
 
@@ -166,14 +158,12 @@ ${script}
 
 After this: manual follow-up only. System sequence complete.`;
 
-    return sendEmail(`PVIL Step 4: Final approach → ${lead.name}`, body)
-        .then(() => {
-            db.prepare(`UPDATE leads SET pv_state = 'step4_sent' WHERE id = ?`).run(lead.id);
-        });
+    await sendEmail(`PVIL Step 4: Final approach → ${lead.name}`, body);
+    await db.prepare(`UPDATE leads SET pv_state = 'step4_sent' WHERE id = ?`).run(lead.id);
 }
 
-function checkAndFireSteps(db) {
-    const leads = db.prepare(`
+async function checkAndFireSteps(db) {
+    const leads = await db.prepare(`
         SELECT * FROM leads
         WHERE pv_launched_at IS NOT NULL
           AND pv_state NOT IN ('engaged', 'complete', 'pending')
@@ -187,16 +177,16 @@ function checkAndFireSteps(db) {
 
         try {
             if (hoursElapsed >= 2 && lead.pv_state === 'step0_launched') {
-                sendStep1(db, lead);
+                await sendStep1(db, lead);
                 fired++;
             } else if (hoursElapsed >= 24 && lead.pv_state === 'step1_sent') {
-                sendStep2(db, lead);
+                await sendStep2(db, lead);
                 fired++;
             } else if (hoursElapsed >= 48 && lead.pv_state === 'step2_sent') {
-                sendStep3(db, lead);
+                await sendStep3(db, lead);
                 fired++;
             } else if (hoursElapsed >= 72 && lead.pv_state === 'step3_sent') {
-                sendStep4(db, lead);
+                await sendStep4(db, lead);
                 fired++;
             }
         } catch (e) {

@@ -1,25 +1,36 @@
-const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
+const { createClient } = require('@libsql/client');
+
 const SEED_FILE = path.resolve(__dirname, 'seed-data.json');
 
-// ─── PERSISTENCE — production MUST use Render persistent disk ───────────────
+// ─── PERSISTENCE — production MUST use Turso (cloud SQLite, survives redeploys)
+// TURSO_URL + TURSO_TOKEN → Turso cloud (Render production).
+// Without those → local file: URL (dev / pre-Turso fallback).
 const IS_RENDER = !!process.env.RENDER;
-const RENDER_DATA_DIR = '/opt/render/project/data';
-const PRODUCTION_DB_FILE = path.join(RENDER_DATA_DIR, 'propmind.db');
+const IS_TURSO = !!(process.env.TURSO_URL && process.env.TURSO_TOKEN);
 
-const DATA_DIR = IS_RENDER
-    ? (process.env.DATA_DIR || RENDER_DATA_DIR)
-    : (process.env.DATA_DIR || __dirname);
+let clientUrl;
+let authToken;
+if (IS_TURSO) {
+    clientUrl = process.env.TURSO_URL;
+    authToken = process.env.TURSO_TOKEN;
+} else {
+    const DATA_DIR = process.env.DATA_DIR || __dirname;
+    if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    clientUrl = 'file:' + path.resolve(DATA_DIR, 'propmind.db').replace(/\\/g, '/');
+}
 
-const dbPath = IS_RENDER
-    ? PRODUCTION_DB_FILE
-    : path.resolve(DATA_DIR, 'propmind.db');
+const client = createClient({ url: clientUrl, authToken });
+
+const dbPath = clientUrl;
 
 let dbReady = false;
 const persistenceInfo = {
-    environment: IS_RENDER ? 'production' : 'local',
-    dataDir: DATA_DIR,
+    environment: IS_TURSO ? 'production-turso' : IS_RENDER ? 'production-ephemeral' : 'local',
+    dataDir: IS_TURSO ? 'turso' : clientUrl.replace(/^file:/, ''),
     dbPath,
     dbExists: false,
     dbSizeBytes: 0,
@@ -29,79 +40,92 @@ const persistenceInfo = {
     migratedFromEphemeral: false
 };
 
-function ensureDataDirectory() {
-    if (!fs.existsSync(DATA_DIR)) {
-        fs.mkdirSync(DATA_DIR, { recursive: true });
-        console.log(`Created data directory: ${DATA_DIR}`);
-    }
+if (IS_RENDER && !IS_TURSO) {
+    console.error('⚠⚠⚠  WARNING: Running on Render WITHOUT TURSO_URL/TURSO_TOKEN — the database is EPHEMERAL and every redeploy wipes it. Set TURSO_URL + TURSO_TOKEN immediately.');
 }
 
-function migrateEphemeralDbIfNeeded() {
-    if (!IS_RENDER) return;
-    const ephemeralPath = path.resolve(__dirname, 'propmind.db');
-    if (fs.existsSync(dbPath)) return;
-    if (!fs.existsSync(ephemeralPath)) return;
+function rowToObject(result, row) {
+    const out = {};
+    for (let i = 0; i < result.columns.length; i++) {
+        out[result.columns[i]] = row[i];
+    }
+    return out;
+}
+
+function normalizeArgs(args) {
+    return args.map((a) => (a === undefined ? null : a));
+}
+
+function prepare(sql) {
+    return {
+        get: async (...args) => {
+            const r = await client.execute({ sql, args: normalizeArgs(args) });
+            return r.rows.length ? rowToObject(r, r.rows[0]) : undefined;
+        },
+        all: async (...args) => {
+            const r = await client.execute({ sql, args: normalizeArgs(args) });
+            return r.rows.map((row) => rowToObject(r, row));
+        },
+        run: async (...args) => {
+            const r = await client.execute({ sql, args: normalizeArgs(args) });
+            return {
+                changes: r.rowsAffected ?? 0,
+                lastInsertRowid: Number(r.lastInsertRowid ?? 0)
+            };
+        }
+    };
+}
+
+async function exec(sql) {
+    return client.execute({ sql });
+}
+
+async function pragma(sql) {
     try {
-        fs.copyFileSync(ephemeralPath, dbPath);
-        persistenceInfo.migratedFromEphemeral = true;
-        console.log(`✓ Migrated database from ephemeral path → ${dbPath}`);
-        const wal = ephemeralPath + '-wal';
-        const shm = ephemeralPath + '-shm';
-        if (fs.existsSync(wal)) fs.copyFileSync(wal, dbPath + '-wal');
-        if (fs.existsSync(shm)) fs.copyFileSync(shm, dbPath + '-shm');
+        await client.execute({ sql: `PRAGMA ${sql}` });
     } catch (e) {
-        console.error('Ephemeral DB migration failed:', e.message);
+        console.warn('pragma ignored:', e.message);
     }
 }
 
-function logStartupDiagnostics() {
-    console.log('════════════════════════════════════════════════════════════');
-    console.log('  DATABASE STARTUP DIAGNOSTICS');
-    console.log('════════════════════════════════════════════════════════════');
-    console.log(`  Environment:    ${persistenceInfo.environment}`);
-    console.log(`  Data directory: ${DATA_DIR}`);
-    console.log(`  Database path:  ${dbPath}`);
-    persistenceInfo.dbExists = fs.existsSync(dbPath);
-    console.log(`  DB file exists: ${persistenceInfo.dbExists}`);
-    if (persistenceInfo.dbExists) {
-        const stats = fs.statSync(dbPath);
-        persistenceInfo.dbSizeBytes = stats.size;
-        console.log(`  DB file size:   ${stats.size} bytes`);
-        console.log(`  DB modified:    ${stats.mtime.toISOString()}`);
-    }
-    if (IS_RENDER && DATA_DIR !== RENDER_DATA_DIR) {
-        console.warn(`  ⚠ WARNING: Expected Render disk at ${RENDER_DATA_DIR}`);
-    }
-    console.log('════════════════════════════════════════════════════════════');
+async function close() {
+    try { await client.close(); } catch (e) { /* already closed */ }
 }
 
-ensureDataDirectory();
-migrateEphemeralDbIfNeeded();
-logStartupDiagnostics();
-
-if (!fs.existsSync(dbPath) && IS_RENDER) {
-    console.log('  ℹ No database on persistent disk yet — will create at:', dbPath);
+async function getPersistenceInfo() {
+    const live = { ...persistenceInfo, ready: dbReady };
+    try {
+        const props = await db.prepare(`SELECT COUNT(*) as c FROM properties`).get();
+        const leads = await db.prepare(`SELECT COUNT(*) as c FROM leads`).get();
+        live.propertyCount = props.c;
+        live.leadCount = leads.c;
+    } catch (e) { /* keep boot snapshot on failure */ }
+    return live;
 }
 
-const db = new Database(dbPath);
-console.log('Connected to SQLite.');
+const db = {
+    prepare,
+    exec,
+    pragma,
+    close,
+    isReady: () => dbReady,
+    getPersistenceInfo,
+    dbPath
+};
 
-db.pragma('journal_mode = DELETE');
-db.pragma('synchronous = FULL');
-db.pragma('foreign_keys = ON');
-console.log('Pragmas: DELETE journal, FULL sync, foreign keys ON.');
+async function initDb() {
+    await db.pragma('journal_mode = DELETE');
+    await db.pragma('synchronous = FULL');
+    await db.pragma('foreign_keys = ON');
 
-initDb();
-
-function initDb() {
-    db.prepare(`
+    await db.prepare(`
         CREATE TABLE IF NOT EXISTS _meta (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
         )
     `).run();
 
-    db.prepare(`
+    await db.prepare(`
         CREATE TABLE IF NOT EXISTS leads (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT, phone TEXT, budget TEXT, timeline TEXT,
@@ -136,10 +160,10 @@ function initDb() {
         { col: 'last_reply_at', def: 'INTEGER' },
     ];
     for (const m of leadMigrations) {
-        try { db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }
+        try { await db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }
     }
 
-    db.prepare(`
+    await db.prepare(`
         CREATE TABLE IF NOT EXISTS availability_slots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             slot_datetime TEXT NOT NULL, label TEXT,
@@ -148,7 +172,7 @@ function initDb() {
         )
     `).run();
 
-    db.prepare(`
+    await db.prepare(`
         CREATE TABLE IF NOT EXISTS viewing_offers (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             lead_id INTEGER NOT NULL, slot_ids TEXT NOT NULL,
@@ -157,7 +181,7 @@ function initDb() {
         )
     `).run();
 
-    db.prepare(`
+    await db.prepare(`
         CREATE TABLE IF NOT EXISTS properties (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             type TEXT, title TEXT, area TEXT, price TEXT,
@@ -167,14 +191,14 @@ function initDb() {
         )
     `).run();
 
-    db.prepare(`
+    await db.prepare(`
         CREATE TABLE IF NOT EXISTS settings (
             key TEXT PRIMARY KEY, value TEXT NOT NULL
         )
     `).run();
 
     // ─── Agencies (multi-tenant) ─────────────────────────────────────────────
-    db.prepare(`
+    await db.prepare(`
         CREATE TABLE IF NOT EXISTS agencies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             slug TEXT UNIQUE NOT NULL,
@@ -184,8 +208,7 @@ function initDb() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     `).run();
-    // Contact column migration (older DBs created without it)
-    try { db.prepare(`ALTER TABLE agencies ADD COLUMN contact TEXT DEFAULT ''`).run(); } catch (e) { /* exists */ }
+    try { await db.prepare(`ALTER TABLE agencies ADD COLUMN contact TEXT DEFAULT ''`).run(); } catch (e) { /* exists */ }
 
     // ─── agency_id column migrations ─────────────────────────────────────────
     const agencyIdMigrations = [
@@ -193,7 +216,7 @@ function initDb() {
         { table: 'leads',      col: 'agency_id', def: 'INTEGER DEFAULT NULL' },
     ];
     for (const m of agencyIdMigrations) {
-        try { db.prepare(`ALTER TABLE ${m.table} ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }
+        try { await db.prepare(`ALTER TABLE ${m.table} ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }
     }
 
     // ─── Ensure a default agency exists (seeded from env / legacy settings) ──
@@ -202,32 +225,31 @@ function initDb() {
         || defaultAgencyName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
         || 'propmind';
     const defaultContact = process.env.AGENT_EMAIL || process.env.AGENT_WHATSAPP_NUMBER || process.env.AGENCY_WHATSAPP || '';
-    db.prepare(`
+    await db.prepare(`
         INSERT OR IGNORE INTO agencies (slug, name, whatsapp, contact)
         VALUES (?, ?, ?, ?)
     `).run(defaultAgencySlug, defaultAgencyName, defaultContact, defaultContact);
-    const defaultAgency = db.prepare(`SELECT * FROM agencies ORDER BY id ASC LIMIT 1`).get();
+    const defaultAgency = await db.prepare(`SELECT * FROM agencies ORDER BY id ASC LIMIT 1`).get();
 
     // Idempotent contact fill: a redeploy with AGENT_EMAIL set must activate
     // email notifications even if an older boot already created the row empty.
     if (defaultAgency && !defaultAgency.contact) {
-        db.prepare(`UPDATE agencies SET contact = ? WHERE id = ?`).run(defaultContact, defaultAgency.id);
-        defaultAgency.contact = defaultContact;
+        await db.prepare(`UPDATE agencies SET contact = ? WHERE id = ?`).run(defaultContact, defaultAgency.id);
     }
 
     // Backfill legacy rows so nothing is left orphaned
-    db.prepare(`
+    await db.prepare(`
         UPDATE properties SET agency_id = ? WHERE agency_id IS NULL
     `).run(defaultAgency.id);
-    db.prepare(`
+    await db.prepare(`
         UPDATE leads SET agency_id = ? WHERE agency_id IS NULL
     `).run(defaultAgency.id);
-    db.prepare(`
+    await db.prepare(`
         UPDATE agencies SET contact = whatsapp WHERE (contact IS NULL OR contact = '') AND whatsapp IS NOT NULL AND whatsapp != ''
     `).run();
 
     try {
-        db.prepare(`CREATE TABLE IF NOT EXISTS launches (
+        await db.prepare(`CREATE TABLE IF NOT EXISTS launches (
             id          INTEGER PRIMARY KEY AUTOINCREMENT,
             developer   TEXT NOT NULL,
             project     TEXT NOT NULL,
@@ -243,7 +265,7 @@ function initDb() {
         )`).run();
     } catch(e) { /* table exists */ }
 
-    db.exec(`
+    await db.exec(`
         CREATE TABLE IF NOT EXISTS silence_profiles (
             id              INTEGER  PRIMARY KEY AUTOINCREMENT,
             lead_id         INTEGER  NOT NULL REFERENCES leads(id),
@@ -259,55 +281,62 @@ function initDb() {
         )
     `);
 
-    db.exec(`
+    await db.prepare(`
         CREATE INDEX IF NOT EXISTS idx_silence_lead
-            ON silence_profiles(lead_id);
+            ON silence_profiles(lead_id)
+    `).run();
+    await db.prepare(`
         CREATE INDEX IF NOT EXISTS idx_silence_dismissed
             ON silence_profiles(dismissed)
-    `);
+    `).run();
 
-    const propertyCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
-    const leadCount = db.prepare(`SELECT COUNT(*) as count FROM leads`).get().count;
+    const propertyCount = (await db.prepare(`SELECT COUNT(*) as count FROM properties`).get()).count;
+    const leadCount = (await db.prepare(`SELECT COUNT(*) as count FROM leads`).get()).count;
     if (propertyCount === 0 && fs.existsSync(SEED_FILE)) {
         try {
             const seedData = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
             const stmt = db.prepare('INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-            const insertAll = db.transaction((rows) => { for (const p of rows) stmt.run(p.type, p.title, p.area, p.price, p.bedrooms, p.description, 'Available now', defaultAgency.id); });
-            insertAll(seedData);
+            for (const p of seedData) {
+                await stmt.run(p.type, p.title, p.area, p.price, p.bedrooms, p.description, 'Available now', defaultAgency.id);
+            }
             console.log(`  Seeded ${seedData.length} properties from seed-data.json`);
+            persistenceInfo.seeded = true;
         } catch (e) { console.error('Seed failed:', e.message); }
     }
-    persistenceInfo.propertyCount = propertyCount > 0 ? propertyCount : db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
-    persistenceInfo.leadCount = leadCount;
 
-    console.log('────────────────────────────────────────────────────────────');
-    const finalPropCount = db.prepare(`SELECT COUNT(*) as count FROM properties`).get().count;
-    console.log(`  PERSISTENCE CHECK: ${finalPropCount} properties, ${leadCount} leads`);
-    console.log('────────────────────────────────────────────────────────────');
+    const finalPropCount = (await db.prepare(`SELECT COUNT(*) as count FROM properties`).get()).count;
+    persistenceInfo.propertyCount = finalPropCount;
+    persistenceInfo.leadCount = leadCount;
 
     console.log(`  ✓ DATA PRESERVED — ${finalPropCount} properties, ${leadCount} leads. No overwrite.`);
 
-    const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
+    const agencyRow = await db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
     if (!agencyRow) {
-        db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('agency_name', ?)`)
+        await db.prepare(`INSERT OR IGNORE INTO settings (key, value) VALUES ('agency_name', ?)`)
           .run(process.env.AGENCY_NAME || 'PropMind Real Estate');
     }
 
-    persistenceInfo.dbExists = fs.existsSync(dbPath);
-    if (persistenceInfo.dbExists) persistenceInfo.dbSizeBytes = fs.statSync(dbPath).size;
+    persistenceInfo.dbExists = IS_TURSO ? true : fs.existsSync(clientUrl.replace(/^file:/, ''));
+    if (!IS_TURSO && persistenceInfo.dbExists) {
+        try { persistenceInfo.dbSizeBytes = fs.statSync(clientUrl.replace(/^file:/, '')).size; } catch (e) { /* ignore */ }
+    }
 
     dbReady = true;
     console.log('════════════════════════════════════════════════════════════');
     console.log('  DATABASE READY — serving requests allowed');
-    console.log(`    Path: ${dbPath}`);
+    console.log(`    Target: ${dbPath}`);
     console.log(`    Properties: ${persistenceInfo.propertyCount} | Leads: ${persistenceInfo.leadCount}`);
     console.log('════════════════════════════════════════════════════════════');
 }
 
+db.ready = initDb();
+db.ready.catch((e) => {
+    console.error('DATABASE INIT FAILED:', e.message);
+});
+
 function gracefulShutdown() {
     try {
-        console.log('Checkpointing WAL and closing database...');
-        db.pragma('wal_checkpoint(TRUNCATE)');
+        console.log('Closing database...');
         db.close();
         console.log('Database closed cleanly.');
     } catch (e) {
@@ -317,13 +346,6 @@ function gracefulShutdown() {
 
 process.on('SIGINT', () => { gracefulShutdown(); process.exit(0); });
 process.on('SIGTERM', () => { gracefulShutdown(); process.exit(0); });
-process.on('exit', () => {
-    try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch (e) { /* closed */ }
-});
-
-db.isReady = () => dbReady;
-db.getPersistenceInfo = () => ({ ...persistenceInfo, ready: dbReady });
-db.dbPath = dbPath;
 
 function parseBudget(str) {
   if (!str) return 0;
@@ -341,4 +363,4 @@ function parseBudget(str) {
   return isNaN(numeric) ? 0 : Math.round(numeric);
 }
 
-module.exports = { db, parseBudget };
+module.exports = { db, parseBudget, initDb };

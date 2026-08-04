@@ -100,8 +100,8 @@ Just return the script, nothing else. Make it sound natural but compelling.`;
 
 // ── SILENCE DECODER — CO-PILOT FEED ────────────────────────────────────────
 
-router.get('/silence-feed', (req, res) => {
-    const profiles = getSilenceProfiles(db);
+router.get('/silence-feed', async (req, res) => {
+    const profiles = await getSilenceProfiles(db);
     return res.json({ profiles });
 });
 

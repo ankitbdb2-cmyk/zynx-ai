@@ -138,7 +138,7 @@ async function finalizeAndScore(from, session) {
 
     // NIM: inject language signal into lead profile before scoring
     session.leadProfile.detectedLanguage = session.detectedLanguage || null;
-    const scoring = assessLead(session.messages, session.leadProfile);
+    const scoring = await assessLead(session.messages, session.leadProfile);
 
     const leadPayload = {
         name: translatedName || session.leadProfile.name || 'Unknown',
@@ -156,7 +156,7 @@ async function finalizeAndScore(from, session) {
     };
 
     try {
-        db.prepare(`
+        await db.prepare(`
             INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes, agency_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
@@ -165,7 +165,7 @@ async function finalizeAndScore(from, session) {
             Array.isArray(scoring.signals) ? scoring.signals.join(', ') : '',
             scoring.recommended_action,
             leadPayload.area, leadPayload.bedrooms, '', leadPayload.psychology_notes,
-            (getDefaultAgency(db) || {}).id
+            (await getDefaultAgency(db) || {}).id
         );
         logger.logEvent('scorer', { action: 'lead_saved', from, name: leadPayload.name, score: scoring.hot_score });
 
@@ -181,7 +181,7 @@ async function finalizeAndScore(from, session) {
             };
             const detectedNationality = nationalityMap[session.detectedLanguage.code] ||
                                          session.detectedLanguage.name;
-            db.prepare(`UPDATE leads SET nationality = ? WHERE phone = ?`)
+            await db.prepare(`UPDATE leads SET nationality = ? WHERE phone = ?`)
               .run(detectedNationality, leadPayload.phone);
         }
     } catch (err) {
@@ -199,7 +199,7 @@ async function finalizeAndScore(from, session) {
             timestamp: new Date().toISOString()
         };
         // Route the alert to the agency's own contact (WhatsApp or email).
-        const agency = getDefaultAgency(db);
+        const agency = await getDefaultAgency(db);
         const alertDest = (agency && (agency.contact || agency.whatsapp))
             || process.env.AGENT_WHATSAPP_NUMBER || '';
         let alertResult;
@@ -257,12 +257,12 @@ async function processMessage(from, userText, isVoice = false, transcriptionCost
         });
     }
 
-    const agencyRow = db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
+    const agencyRow = await db.prepare(`SELECT value FROM settings WHERE key = 'agency_name'`).get();
     const agencyName = process.env.AGENCY_NAME || (agencyRow ? agencyRow.value : 'PropMind Real Estate');
 
-    const activeLaunch = getLaunchMode(db);
-    const rentals = db.prepare(`SELECT * FROM properties WHERE type = 'Rent' AND (availability = 'Available' OR availability = 'Available now')`).all();
-    const sales = db.prepare(`SELECT * FROM properties WHERE type = 'Sale' AND (availability = 'Available' OR availability = 'Available now')`).all();
+    const activeLaunch = await getLaunchMode(db);
+    const rentals = await db.prepare(`SELECT * FROM properties WHERE type = 'Rent' AND (availability = 'Available' OR availability = 'Available now')`).all();
+    const sales = await db.prepare(`SELECT * FROM properties WHERE type = 'Sale' AND (availability = 'Available' OR availability = 'Available now')`).all();
     const systemPrompt = buildSystemPrompt(agencyName, {
         messages: session.messages,
         languageCode: session.detectedLanguage.code,
@@ -334,14 +334,14 @@ router.post('/webhook', async (req, res) => {
         logger.logEvent('whatsapp', { action: 'webhook_received', from, provider, hasMedia: !!mediaUrl });
 
         // PVIL auto-cancel: if lead replies during active sequence, stop it
-        const existingLead = db.prepare('SELECT * FROM leads WHERE phone = ?').get(from);
+        const existingLead = await db.prepare('SELECT * FROM leads WHERE phone = ?').get(from);
         if (existingLead && !['pending', 'engaged', 'complete'].includes(existingLead.pv_state)) {
-            cancelPVIL(db, existingLead.id);
+            await cancelPVIL(db, existingLead.id);
             console.log(`[PVIL] Sequence cancelled for lead ${existingLead.id} — inbound reply received`);
         }
 
         if (existingLead) {
-            updateLastReply(db, existingLead.id);
+            await updateLastReply(db, existingLead.id);
         }
 
         if (isVoice && mediaUrl) {

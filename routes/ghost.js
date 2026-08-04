@@ -15,9 +15,9 @@ const anthropic = new Anthropic({
 
 // ─── Config endpoint — frontend fetches this to get the agency identity ───
 // `?agency=<slug>` selects the agency; falls back to the default agency.
-router.get('/config', (req, res) => {
+router.get('/config', async (req, res) => {
     try {
-        const { agency, agencyName, agencySlug } = resolveAgency(db, req.query.agency);
+        const { agency, agencyName, agencySlug } = await resolveAgency(db, req.query.agency);
         res.json({ agencyName, agencySlug: agencySlug || null, agencyId: agency.id || null });
     } catch (e) {
         res.json({ agencyName: 'PropMind Real Estate', agencySlug: null, agencyId: null });
@@ -26,12 +26,12 @@ router.get('/config', (req, res) => {
 
 // ─── Public properties listing — no auth required ───
 // `?agency=<slug>` limits results to that agency's inventory.
-router.get('/properties', (req, res) => {
+router.get('/properties', async (req, res) => {
     try {
-        const { agencyId, agencySlug } = resolveAgency(db, req.query.agency);
+        const { agencyId, agencySlug } = await resolveAgency(db, req.query.agency);
         const rows = agencyId
-            ? db.prepare(`SELECT * FROM properties WHERE agency_id = ? ORDER BY date DESC`).all(agencyId)
-            : db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
+            ? await db.prepare(`SELECT * FROM properties WHERE agency_id = ? ORDER BY date DESC`).all(agencyId)
+            : await db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
         res.json({ properties: rows, agency: agencySlug });
     } catch (e) {
         res.status(500).json({ error: 'Database error' });
@@ -39,17 +39,17 @@ router.get('/properties', (req, res) => {
 });
 
 // ─── Public stats — no auth required (for homepage analytics section) ───
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
     try {
-        const { agencyId } = resolveAgency(db, req.query.agency);
+        const { agencyId } = await resolveAgency(db, req.query.agency);
         const scope = agencyId ? ' AND agency_id = ?' : '';
         const scopeParams = agencyId ? [agencyId] : [];
-        const totalLeads = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')${scope}`).get(...scopeParams).count;
-        const hotLeads = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE hot_score >= 7${scope}`).get(...scopeParams).count;
-        const allRow = db.prepare(`SELECT COUNT(*) as count FROM leads${agencyId ? ' WHERE agency_id = ?' : ''}`).get(...scopeParams).count;
-        const bookedRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE (status IN ('Visit Scheduled', 'Closed') OR viewing_confirmed = 1)${scope}`).get(...scopeParams).count;
+        const totalLeads = (await db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')${scope}`).get(...scopeParams)).count;
+        const hotLeads = (await db.prepare(`SELECT COUNT(*) as count FROM leads WHERE hot_score >= 7${scope}`).get(...scopeParams)).count;
+        const allRow = (await db.prepare(`SELECT COUNT(*) as count FROM leads${agencyId ? ' WHERE agency_id = ?' : ''}`).get(...scopeParams)).count;
+        const bookedRow = (await db.prepare(`SELECT COUNT(*) as count FROM leads WHERE (status IN ('Visit Scheduled', 'Closed') OR viewing_confirmed = 1)${scope}`).get(...scopeParams)).count;
         const conversionRate = allRow > 0 ? Math.round((bookedRow / allRow) * 100) : 0;
-        const commissionRow = db.prepare(`SELECT value FROM settings WHERE key = 'weekly_commission'`).get();
+        const commissionRow = await db.prepare(`SELECT value FROM settings WHERE key = 'weekly_commission'`).get();
         const commission = commissionRow ? parseFloat(commissionRow.value) || 0 : 0;
         res.json({ totalLeads, hotLeads, conversionRate, commission });
     } catch (e) {
@@ -59,16 +59,16 @@ router.get('/stats', (req, res) => {
 
 router.post('/chat', async (req, res) => {
     try {
-        const { agency, agencyId, agencyName } = resolveAgency(db, req.query.agency);
+        const { agency, agencyId, agencyName } = await resolveAgency(db, req.query.agency);
         const { messages } = req.body; 
         
         // Fetch properties for THIS agency
-        const properties = db.prepare(`
+        const properties = await db.prepare(`
             SELECT * FROM properties
             WHERE agency_id = ? AND (availability = 'Available' OR availability = 'Available now')
         `).all(agencyId);
 
-        const activeLaunch = getLaunchMode(db);
+        const activeLaunch = await getLaunchMode(db);
         const rentals = properties.filter(p => p.type === 'Rent');
         const sales = properties.filter(p => p.type === 'Sale');
         // Pre-extract lead data from current messages for the system prompt
@@ -101,11 +101,11 @@ router.post('/chat', async (req, res) => {
         // Scope lookups to the current agency so agencies never share leads.
         let leadProfile = null;
         if (phoneInMsg) {
-            leadProfile = db.prepare('SELECT * FROM leads WHERE phone = ? AND agency_id = ?').get(phoneInMsg[0], agencyId);
+            leadProfile = await db.prepare('SELECT * FROM leads WHERE phone = ? AND agency_id = ?').get(phoneInMsg[0], agencyId);
         }
         if (!leadProfile && preName) {
             const rawName = (preName[1] || preName[0]).trim();
-            leadProfile = db.prepare("SELECT * FROM leads WHERE phone IS NULL AND name = ? AND agency_id = ? ORDER BY id DESC LIMIT 1").get(rawName, agencyId);
+            leadProfile = await db.prepare("SELECT * FROM leads WHERE phone IS NULL AND name = ? AND agency_id = ? ORDER BY id DESC LIMIT 1").get(rawName, agencyId);
         }
         // Merge DB profile (persisted data) with live-extracted data (current turn)
         const mergedProfile = { ...leadProfile, ...liveProfile };
@@ -184,10 +184,10 @@ router.post('/chat', async (req, res) => {
             if (!firstUserMsg) return;
 
             if (phoneVal) {
-                const existing = db.prepare('SELECT id FROM leads WHERE phone = ? AND agency_id = ?').get(phoneVal, agencyId);
+                const existing = await db.prepare('SELECT id FROM leads WHERE phone = ? AND agency_id = ?').get(phoneVal, agencyId);
                 let capturedLead;
                 if (!existing) {
-                    const info = db.prepare(`
+                    const info = await db.prepare(`
                         INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes, agency_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `).run(nameVal, phoneVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes, agencyId);
@@ -198,7 +198,7 @@ router.post('/chat', async (req, res) => {
                         source: 'Website widget', timestamp: new Date().toISOString()
                     };
                 } else {
-                    db.prepare(`
+                    await db.prepare(`
                         UPDATE leads SET
                             name = COALESCE(NULLIF(?, 'Unknown'), name),
                             hot_score = ?, lead_stage = ?,
@@ -222,9 +222,9 @@ router.post('/chat', async (req, res) => {
             } else {
                 // No phone yet — save anonymous partial lead keyed on session
                 const sessionKey = messages[0]?.content?.slice(0, 40) || 'anon';
-                const existing = db.prepare("SELECT id FROM leads WHERE phone IS NULL AND name = ? AND agency_id = ?").get(nameVal === 'Unknown' ? sessionKey : nameVal, agencyId);
+                const existing = await db.prepare("SELECT id FROM leads WHERE phone IS NULL AND name = ? AND agency_id = ?").get(nameVal === 'Unknown' ? sessionKey : nameVal, agencyId);
                 if (!existing) {
-                    db.prepare(`
+                    await db.prepare(`
                         INSERT INTO leads (name, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes, agency_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `).run(nameVal === 'Unknown' ? 'Visitor' : nameVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes, agencyId);
@@ -242,17 +242,17 @@ router.post('/chat', async (req, res) => {
     }
 });
 
-router.post('/save-lead', (req, res) => {
+router.post('/save-lead', async (req, res) => {
     const { name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes, agency_id } = req.body;
     const updateId = req.query.update;
-    const { agency, agencyId } = resolveAgency(db, req.query.agency || req.body.agency);
+    const { agency, agencyId } = await resolveAgency(db, req.query.agency || req.body.agency);
 
     try {
         let leadId;
 
         if (updateId) {
             // Update existing lead with richer data
-            db.prepare(`
+            await db.prepare(`
                 UPDATE leads SET 
                     name = ?, phone = ?, budget = ?, timeline = ?,
                     hot_score = ?, lead_stage = ?, signals = ?, recommended_action = ?,
@@ -267,7 +267,7 @@ router.post('/save-lead', (req, res) => {
             console.log('Lead updated successfully:', leadId);
         } else {
             // Insert new lead, owned by the resolved agency
-            const info = db.prepare(`
+            const info = await db.prepare(`
                 INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes, agency_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `).run(name, phone, budget, timeline, hot_score || 0, lead_stage || 'Cold',
@@ -318,25 +318,25 @@ function sendAgentNotification(subject, text) {
 }
 
 // ─── Auto Viewing Scheduler (score 8+) ──────────────────────────────────────
-router.post('/viewing-offer', (req, res) => {
+router.post('/viewing-offer', async (req, res) => {
     const { leadId } = req.body;
     if (!leadId) return res.status(400).json({ error: 'leadId required' });
 
     try {
-        const lead = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
+        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
         if (!lead) return res.status(404).json({ error: 'Lead not found' });
         if ((lead.hot_score || 0) < 8) {
             return res.json({ skipped: true, reason: 'Score below threshold' });
         }
         if (lead.viewing_offer_sent) {
-            const existing = db.prepare(`
+            const existing = await db.prepare(`
                 SELECT * FROM viewing_offers WHERE lead_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1
             `).get(leadId);
             if (existing) {
                 const slotIds = JSON.parse(existing.slot_ids);
-                const slots = slotIds.map(id =>
-                    db.prepare(`SELECT * FROM availability_slots WHERE id = ?`).get(id)
-                ).filter(Boolean);
+                const slots = (await Promise.all(
+                    slotIds.map(id => db.prepare(`SELECT * FROM availability_slots WHERE id = ?`).get(id))
+                )).filter(Boolean);
                 return res.json({
                     offerId: existing.id,
                     slots,
@@ -345,7 +345,7 @@ router.post('/viewing-offer', (req, res) => {
             }
         }
 
-        const slots = db.prepare(`
+        const slots = await db.prepare(`
             SELECT * FROM availability_slots
             WHERE is_booked = 0 AND slot_datetime > datetime('now')
             ORDER BY slot_datetime ASC LIMIT 3
@@ -360,11 +360,11 @@ router.post('/viewing-offer', (req, res) => {
         }
 
         const slotIds = slots.map(s => s.id);
-        const offerInfo = db.prepare(`
+        const offerInfo = await db.prepare(`
             INSERT INTO viewing_offers (lead_id, slot_ids, status) VALUES (?, ?, 'pending')
         `).run(leadId, JSON.stringify(slotIds));
 
-        db.prepare(`UPDATE leads SET viewing_offer_sent = 1 WHERE id = ?`).run(leadId);
+        await db.prepare(`UPDATE leads SET viewing_offer_sent = 1 WHERE id = ?`).run(leadId);
 
         const offerMessage = buildOfferMessage(lead.name, slots);
         res.json({ offerId: offerInfo.lastInsertRowid, slots, offerMessage });
@@ -384,14 +384,14 @@ function buildOfferMessage(name, slots) {
     return msg;
 }
 
-router.post('/confirm-viewing', (req, res) => {
+router.post('/confirm-viewing', async (req, res) => {
     const { leadId, choice, offerId } = req.body;
     if (!leadId || !choice) return res.status(400).json({ error: 'leadId and choice required' });
 
     try {
         const offer = offerId
-            ? db.prepare(`SELECT * FROM viewing_offers WHERE id = ? AND lead_id = ?`).get(offerId, leadId)
-            : db.prepare(`SELECT * FROM viewing_offers WHERE lead_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1`).get(leadId);
+            ? await db.prepare(`SELECT * FROM viewing_offers WHERE id = ? AND lead_id = ?`).get(offerId, leadId)
+            : await db.prepare(`SELECT * FROM viewing_offers WHERE lead_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1`).get(leadId);
 
         if (!offer || offer.status !== 'pending') {
             return res.status(400).json({ error: 'No pending viewing offer' });
@@ -404,15 +404,15 @@ router.post('/confirm-viewing', (req, res) => {
         }
 
         const slotId = slotIds[idx];
-        const slot = db.prepare(`SELECT * FROM availability_slots WHERE id = ? AND is_booked = 0`).get(slotId);
+        const slot = await db.prepare(`SELECT * FROM availability_slots WHERE id = ? AND is_booked = 0`).get(slotId);
         if (!slot) return res.status(400).json({ error: 'Slot no longer available' });
 
-        const lead = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
+        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
         const slotLabel = formatSlot(slot.slot_datetime, slot.label);
 
-        db.prepare(`UPDATE availability_slots SET is_booked = 1, lead_id = ? WHERE id = ?`).run(leadId, slotId);
-        db.prepare(`UPDATE viewing_offers SET status = 'confirmed', selected_slot_id = ? WHERE id = ?`).run(slotId, offer.id);
-        db.prepare(`
+        await db.prepare(`UPDATE availability_slots SET is_booked = 1, lead_id = ? WHERE id = ?`).run(leadId, slotId);
+        await db.prepare(`UPDATE viewing_offers SET status = 'confirmed', selected_slot_id = ? WHERE id = ?`).run(slotId, offer.id);
+        await db.prepare(`
             UPDATE leads SET viewing_confirmed = 1, viewing_slot_id = ?, status = 'Visit Scheduled'
             WHERE id = ?
         `).run(slotId, leadId);
@@ -435,7 +435,7 @@ router.post('/confirm-viewing', (req, res) => {
 });
 
 // ─── PVIL: Mark Viewing Complete ───────────────────────────────────────────
-router.post('/complete-viewing', (req, res) => {
+router.post('/complete-viewing', async (req, res) => {
     const { lead_id, no_show } = req.body;
 
     if (!lead_id) {
@@ -443,14 +443,14 @@ router.post('/complete-viewing', (req, res) => {
     }
 
     try {
-        const lead = db.prepare(`SELECT * FROM leads WHERE id = ?`).get(lead_id);
+        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ?`).get(lead_id);
 
         if (!lead) {
             return res.status(404).json({ error: 'Lead not found' });
         }
 
         if (no_show) {
-            db.prepare(`UPDATE leads SET no_show = 1, status = 'No Show' WHERE id = ?`).run(lead_id);
+            await db.prepare(`UPDATE leads SET no_show = 1, status = 'No Show' WHERE id = ?`).run(lead_id);
 
             if (process.env.AGENT_EMAIL && process.env.EMAIL_PASSWORD) {
                 const transporter = nodemailer.createTransport({
@@ -485,9 +485,9 @@ PVIL sequence was NOT launched for this lead.`
             return res.json({ success: true, pvil_launched: false, status: 'No Show' });
         }
 
-        db.prepare(`UPDATE leads SET completed_at = datetime('now'), status = 'Viewing Completed' WHERE id = ?`).run(lead_id);
+        await db.prepare(`UPDATE leads SET completed_at = datetime('now'), status = 'Viewing Completed' WHERE id = ?`).run(lead_id);
 
-        const { alreadyLaunched } = launchPVIL(db, lead_id);
+        const { alreadyLaunched } = await launchPVIL(db, lead_id);
 
         if (process.env.AGENT_EMAIL && process.env.EMAIL_PASSWORD) {
             const transporter = nodemailer.createTransport({

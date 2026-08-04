@@ -78,15 +78,12 @@ router.post('/login', (req, res) => {
     if (inputUser === envUser && inputPass === envPass && envUser && envPass) {
         return res.json({ success: true });
     }
-    if (inputUser === 'admin' && inputPass === 'propMind123') {
-        return res.json({ success: true });
-    }
     res.status(401).json({ error: 'Invalid credentials' });
 });
 
-router.get('/leads', (req, res) => {
+router.get('/leads', async (req, res) => {
     try {
-        const rows = db.prepare(`SELECT * FROM leads ORDER BY hot_score DESC, date DESC`).all();
+        const rows = await db.prepare(`SELECT * FROM leads ORDER BY hot_score DESC, date DESC`).all();
         res.json({ leads: rows });
     } catch (err) {
         console.error('Failed to get leads:', err);
@@ -94,10 +91,10 @@ router.get('/leads', (req, res) => {
     }
 });
 
-router.post('/leads/:id/status', (req, res) => {
+router.post('/leads/:id/status', async (req, res) => {
     const { status } = req.body;
     try {
-        db.prepare(`UPDATE leads SET status = ? WHERE id = ?`).run(status, req.params.id);
+        await db.prepare(`UPDATE leads SET status = ? WHERE id = ?`).run(status, req.params.id);
         res.json({ success: true });
     } catch (err) {
         console.error('Failed to update lead status:', err);
@@ -105,12 +102,12 @@ router.post('/leads/:id/status', (req, res) => {
     }
 });
 
-router.get('/stats', (req, res) => {
+router.get('/stats', async (req, res) => {
     try {
-        const totalRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')`).get();
-        const hotRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE hot_score >= 7`).get();
-        const bookedRow = db.prepare(`SELECT COUNT(*) as count FROM leads WHERE status IN ('Visit Scheduled', 'Closed') OR viewing_confirmed = 1`).get();
-        const allRow = db.prepare(`SELECT COUNT(*) as count FROM leads`).get();
+        const totalRow = await db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= date('now', '-7 days')`).get();
+        const hotRow = await db.prepare(`SELECT COUNT(*) as count FROM leads WHERE hot_score >= 7`).get();
+        const bookedRow = await db.prepare(`SELECT COUNT(*) as count FROM leads WHERE status IN ('Visit Scheduled', 'Closed') OR viewing_confirmed = 1`).get();
+        const allRow = await db.prepare(`SELECT COUNT(*) as count FROM leads`).get();
         
         const total = totalRow.count;
         const hot = hotRow.count;
@@ -126,36 +123,36 @@ router.get('/stats', (req, res) => {
 });
 
 // ─── Weekly Analytics Report ────────────────────────────────────────────────
-router.get('/analytics/weekly', (req, res) => {
+router.get('/analytics/weekly', async (req, res) => {
     try {
-        const totalLeads = db.prepare(`
+        const totalLeads = (await db.prepare(`
             SELECT COUNT(*) as count FROM leads WHERE date >= datetime('now', '-7 days')
-        `).get().count;
+        `).get()).count;
 
-        const bookedViewings = db.prepare(`
+        const bookedViewings = (await db.prepare(`
             SELECT COUNT(*) as count FROM leads
             WHERE date >= datetime('now', '-7 days')
             AND (status IN ('Visit Scheduled', 'Closed') OR viewing_confirmed = 1)
-        `).get().count;
+        `).get()).count;
 
         const conversionRate = totalLeads > 0 ? Math.round((bookedViewings / totalLeads) * 100) : 0;
 
-        const hotContacted = db.prepare(`
+        const hotContacted = (await db.prepare(`
             SELECT COUNT(*) as count FROM leads
             WHERE date >= datetime('now', '-7 days') AND hot_score >= 8
             AND status IN ('Contacted', 'Visit Scheduled', 'Closed')
-        `).get().count;
+        `).get()).count;
 
-        const hotMissed = db.prepare(`
+        const hotMissed = (await db.prepare(`
             SELECT COUNT(*) as count FROM leads
             WHERE date >= datetime('now', '-7 days') AND hot_score >= 8
             AND status = 'New'
-        `).get().count;
+        `).get()).count;
 
-        const commissionRow = db.prepare(`SELECT value FROM settings WHERE key = 'weekly_commission'`).get();
+        const commissionRow = await db.prepare(`SELECT value FROM settings WHERE key = 'weekly_commission'`).get();
         const commission = commissionRow ? parseFloat(commissionRow.value) || 0 : 0;
 
-        const leadsByDay = db.prepare(`
+        const leadsByDay = await db.prepare(`
             SELECT strftime('%Y-%m-%d', date) as day, COUNT(*) as count
             FROM leads WHERE date >= datetime('now', '-7 days')
             GROUP BY strftime('%Y-%m-%d', date) ORDER BY day ASC
@@ -163,12 +160,12 @@ router.get('/analytics/weekly', (req, res) => {
 
         const funnel = {
             captured: totalLeads,
-            hot: db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= datetime('now', '-7 days') AND hot_score >= 8`).get().count,
+            hot: (await db.prepare(`SELECT COUNT(*) as count FROM leads WHERE date >= datetime('now', '-7 days') AND hot_score >= 8`).get()).count,
             contacted: hotContacted,
             booked: bookedViewings
         };
 
-        const stageBreakdown = db.prepare(`
+        const stageBreakdown = await db.prepare(`
             SELECT COALESCE(lead_stage, 'Cold') as stage, COUNT(*) as count
             FROM leads WHERE date >= datetime('now', '-7 days')
             GROUP BY lead_stage
@@ -191,13 +188,13 @@ router.get('/analytics/weekly', (req, res) => {
     }
 });
 
-router.post('/analytics/commission', (req, res) => {
+router.post('/analytics/commission', async (req, res) => {
     const { amount } = req.body;
     if (amount === undefined || isNaN(Number(amount))) {
         return res.status(400).json({ error: 'Valid amount required' });
     }
     try {
-        db.prepare(`INSERT INTO settings (key, value) VALUES ('weekly_commission', ?)
+        await db.prepare(`INSERT INTO settings (key, value) VALUES ('weekly_commission', ?)
                     ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
           .run(String(amount));
         res.json({ success: true, commission: parseFloat(amount) });
@@ -208,9 +205,9 @@ router.post('/analytics/commission', (req, res) => {
 });
 
 // ─── Availability Calendar ────────────────────────────────────────────────────
-router.get('/availability', (req, res) => {
+router.get('/availability', async (req, res) => {
     try {
-        const slots = db.prepare(`
+        const slots = await db.prepare(`
             SELECT s.*, l.name as lead_name
             FROM availability_slots s
             LEFT JOIN leads l ON s.lead_id = l.id
@@ -223,11 +220,11 @@ router.get('/availability', (req, res) => {
     }
 });
 
-router.post('/availability', (req, res) => {
+router.post('/availability', async (req, res) => {
     const { slot_datetime, label } = req.body;
     if (!slot_datetime) return res.status(400).json({ error: 'slot_datetime required' });
     try {
-        const info = db.prepare(`
+        const info = await db.prepare(`
             INSERT INTO availability_slots (slot_datetime, label) VALUES (?, ?)
         `).run(slot_datetime, label || '');
         res.json({ success: true, id: info.lastInsertRowid });
@@ -237,12 +234,12 @@ router.post('/availability', (req, res) => {
     }
 });
 
-router.delete('/availability/:id', (req, res) => {
+router.delete('/availability/:id', async (req, res) => {
     try {
-        const slot = db.prepare(`SELECT is_booked FROM availability_slots WHERE id = ?`).get(req.params.id);
+        const slot = await db.prepare(`SELECT is_booked FROM availability_slots WHERE id = ?`).get(req.params.id);
         if (!slot) return res.status(404).json({ error: 'Slot not found' });
         if (slot.is_booked) return res.status(400).json({ error: 'Cannot delete a booked slot' });
-        db.prepare(`DELETE FROM availability_slots WHERE id = ?`).run(req.params.id);
+        await db.prepare(`DELETE FROM availability_slots WHERE id = ?`).run(req.params.id);
         res.json({ success: true });
     } catch (err) {
         console.error('Failed to delete slot:', err);
@@ -250,9 +247,9 @@ router.delete('/availability/:id', (req, res) => {
     }
 });
 
-router.get('/viewings', (req, res) => {
+router.get('/viewings', async (req, res) => {
     try {
-        const viewings = db.prepare(`
+        const viewings = await db.prepare(`
             SELECT l.id, l.name, l.phone, l.area, l.hot_score, l.status,
                    s.slot_datetime, s.label, s.id as slot_id
             FROM leads l
@@ -268,9 +265,9 @@ router.get('/viewings', (req, res) => {
 });
 
 // Property Management
-router.get('/properties', (req, res) => {
+router.get('/properties', async (req, res) => {
     try {
-        const rows = db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
+        const rows = await db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
         res.json({ properties: rows });
     } catch (err) {
         console.error('Failed to get properties:', err);
@@ -278,10 +275,11 @@ router.get('/properties', (req, res) => {
     }
 });
 
-router.post('/properties', (req, res) => {
+router.post('/properties', async (req, res) => {
     const { type, title, area, price, bedrooms, description, availability } = req.body;
     try {
-        const info = db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability || 'Available now', (getDefaultAgency(db) || {}).id);
+        const defaultAgency = await getDefaultAgency(db);
+        const info = await db.prepare(`INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`).run(type, title, area, price, bedrooms, description, availability || 'Available now', (defaultAgency || {}).id);
         res.json({ success: true, id: info.lastInsertRowid });
     } catch (err) {
         console.error('Failed to add property:', err);
@@ -346,7 +344,7 @@ async function handleExtractListings(req, res) {
 router.post('/properties/parse-paste', handleExtractListings);
 router.post('/extract-listings', handleExtractListings);
 
-router.post('/properties/bulk', (req, res) => {
+router.post('/properties/bulk', async (req, res) => {
     const { listings } = req.body;
     if (!Array.isArray(listings) || listings.length === 0) {
         return res.status(400).json({ error: 'listings array required' });
@@ -356,25 +354,21 @@ router.post('/properties/bulk', (req, res) => {
             INSERT INTO properties (type, title, area, price, bedrooms, description, availability, agency_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `);
-        const defaultAgencyId = (getDefaultAgency(db) || {}).id;
-        const insertAll = db.transaction((rows) => {
-            const ids = [];
-            for (const l of rows) {
-                const info = stmt.run(
-                    l.type === 'Sale' ? 'Sale' : 'Rent',
-                    l.title || 'Property',
-                    l.area || 'Dubai',
-                    l.price || '—',
-                    l.bedrooms || '—',
-                    l.description || '',
-                    l.availability || 'Available now',
-                    defaultAgencyId
-                );
-                ids.push(info.lastInsertRowid);
-            }
-            return ids;
-        });
-        const ids = insertAll(listings);
+        const defaultAgencyId = (await getDefaultAgency(db) || {}).id;
+        const ids = [];
+        for (const l of listings) {
+            const info = await stmt.run(
+                l.type === 'Sale' ? 'Sale' : 'Rent',
+                l.title || 'Property',
+                l.area || 'Dubai',
+                l.price || '—',
+                l.bedrooms || '—',
+                l.description || '',
+                l.availability || 'Available now',
+                defaultAgencyId
+            );
+            ids.push(info.lastInsertRowid);
+        }
         res.json({ success: true, saved: ids.length, ids });
     } catch (err) {
         console.error('Bulk save error:', err);
@@ -382,9 +376,9 @@ router.post('/properties/bulk', (req, res) => {
     }
 });
 
-router.delete('/properties/all', (req, res) => {
+router.delete('/properties/all', async (req, res) => {
     try {
-        db.prepare(`DELETE FROM properties`).run();
+        await db.prepare(`DELETE FROM properties`).run();
         res.json({ success: true });
     } catch (err) {
         console.error('Failed to delete all properties:', err);
@@ -392,9 +386,9 @@ router.delete('/properties/all', (req, res) => {
     }
 });
 
-router.delete('/properties/:id', (req, res) => {
+router.delete('/properties/:id', async (req, res) => {
     try {
-        db.prepare(`DELETE FROM properties WHERE id = ?`).run(req.params.id);
+        await db.prepare(`DELETE FROM properties WHERE id = ?`).run(req.params.id);
         res.json({ success: true });
     } catch (err) {
         console.error('Failed to delete property:', err);
@@ -403,9 +397,9 @@ router.delete('/properties/:id', (req, res) => {
 });
 
 // ─── Settings ───────────────────────────────────────────────────────────────
-router.get('/settings', (req, res) => {
+router.get('/settings', async (req, res) => {
     try {
-        const rows = db.prepare(`SELECT key, value FROM settings`).all();
+        const rows = await db.prepare(`SELECT key, value FROM settings`).all();
         const settings = {};
         rows.forEach(r => settings[r.key] = r.value);
         res.json({ settings });
@@ -415,11 +409,11 @@ router.get('/settings', (req, res) => {
     }
 });
 
-router.post('/settings', (req, res) => {
+router.post('/settings', async (req, res) => {
     const { key, value } = req.body;
     if (!key || value === undefined) return res.status(400).json({ error: 'key and value required' });
     try {
-        db.prepare(`INSERT INTO settings (key, value) VALUES (?, ?)
+        await db.prepare(`INSERT INTO settings (key, value) VALUES (?, ?)
                     ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
           .run(key, value);
         res.json({ success: true });
@@ -430,7 +424,7 @@ router.post('/settings', (req, res) => {
 });
 
 // ─── PVIL: Admin — Mark Viewing Complete ────────────────────────────────────
-router.post('/leads/:id/complete-viewing', (req, res) => {
+router.post('/leads/:id/complete-viewing', async (req, res) => {
     const leadId = parseInt(req.params.id);
     const noShow = req.body.no_show === true || req.body.no_show === 'true';
 
@@ -438,27 +432,27 @@ router.post('/leads/:id/complete-viewing', (req, res) => {
         return res.status(400).json({ error: 'Invalid lead ID' });
     }
 
-    const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId);
+    const lead = await db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId);
 
     if (!lead) {
         return res.status(404).json({ error: 'Lead not found' });
     }
 
     if (noShow) {
-        db.prepare(`UPDATE leads SET no_show = 1, status = 'No Show' WHERE id = ?`).run(leadId);
+        await db.prepare(`UPDATE leads SET no_show = 1, status = 'No Show' WHERE id = ?`).run(leadId);
         return res.json({ success: true, pvil_launched: false, status: 'No Show' });
     }
 
-    db.prepare(`UPDATE leads SET completed_at = datetime('now'), status = 'Viewing Completed' WHERE id = ?`).run(leadId);
+    await db.prepare(`UPDATE leads SET completed_at = datetime('now'), status = 'Viewing Completed' WHERE id = ?`).run(leadId);
 
-    const { alreadyLaunched } = launchPVIL(db, leadId);
+    const { alreadyLaunched } = await launchPVIL(db, leadId);
 
     return res.json({ success: true, pvil_launched: !alreadyLaunched, status: 'Viewing Completed' });
 });
 
 // ── LAUNCH MODE ROUTES ────────────────────────────────────────────────────
 
-router.post('/launches', (req, res) => {
+router.post('/launches', async (req, res) => {
     const {
         developer, project, payment_plan, handover_date,
         price_floor, golden_visa, roi_projection, notes
@@ -468,7 +462,7 @@ router.post('/launches', (req, res) => {
         return res.status(400).json({ error: 'developer and project are required' });
     }
 
-    const launch = activateLaunch(db, {
+    const launch = await activateLaunch(db, {
         developer,
         project,
         payment_plan: payment_plan || '',
@@ -482,31 +476,31 @@ router.post('/launches', (req, res) => {
     return res.json({ success: true, launch });
 });
 
-router.get('/launches/active', (req, res) => {
-    const launch = getLaunchMode(db);
+router.get('/launches/active', async (req, res) => {
+    const launch = await getLaunchMode(db);
     if (!launch) return res.json({ active: false });
     return res.json({ active: true, launch });
 });
 
-router.get('/launches', (req, res) => {
-    const launches = db.prepare(
+router.get('/launches', async (req, res) => {
+    const launches = await db.prepare(
         'SELECT * FROM launches ORDER BY created_at DESC'
     ).all();
     return res.json({ launches });
 });
 
-router.post('/launches/:id/deactivate', (req, res) => {
+router.post('/launches/:id/deactivate', async (req, res) => {
     const launchId = parseInt(req.params.id);
     if (!launchId) return res.status(400).json({ error: 'Invalid launch ID' });
-    const result = deactivateLaunch(db, launchId);
+    const result = await deactivateLaunch(db, launchId);
     return res.json({ success: true, ...result });
 });
 
-router.post('/launches/:id/extend', (req, res) => {
+router.post('/launches/:id/extend', async (req, res) => {
     const launchId = parseInt(req.params.id);
     const hours = parseInt(req.body.hours) || 24;
     if (!launchId) return res.status(400).json({ error: 'Invalid launch ID' });
-    const result = extendLaunch(db, launchId, hours);
+    const result = await extendLaunch(db, launchId, hours);
     return res.json({ success: true, ...result });
 });
 
@@ -514,22 +508,22 @@ router.post('/launches/:id/extend', (req, res) => {
 
 // ── SILENCE DECODER ROUTES ──────────────────────────────────────────────────
 
-router.get('/silence-profiles', (req, res) => {
-    const profiles = getSilenceProfiles(db);
+router.get('/silence-profiles', async (req, res) => {
+    const profiles = await getSilenceProfiles(db);
     return res.json({ profiles });
 });
 
-router.post('/silence-profiles/:id/dismiss', (req, res) => {
+router.post('/silence-profiles/:id/dismiss', async (req, res) => {
     const profileId = parseInt(req.params.id);
     if (!profileId) return res.status(400).json({ error: 'Invalid profile ID' });
-    const result = dismissProfile(db, profileId);
+    const result = await dismissProfile(db, profileId);
     return res.json({ success: true, ...result });
 });
 
-router.get('/leads/:id/silence-profile', (req, res) => {
+router.get('/leads/:id/silence-profile', async (req, res) => {
     const leadId = parseInt(req.params.id);
     if (!leadId) return res.status(400).json({ error: 'Invalid lead ID' });
-    const profile = db.prepare(`
+    const profile = await db.prepare(`
         SELECT * FROM silence_profiles
         WHERE lead_id = ? AND dismissed = 0
         ORDER BY generated_at DESC
@@ -560,7 +554,7 @@ function maskPhones(value) {
     ));
 }
 
-router.get('/diag', (req, res) => {
+router.get('/diag', async (req, res) => {
     const envFlag = (key) => ({ key, set: process.env[key] !== undefined, value: process.env[key] === undefined ? null : maskValue(process.env[key]) });
     const readLogTail = (category, n = 25) => {
         const file = path.join(LOG_DIR, `${category}-${new Date().toISOString().slice(0, 10)}.log`);
@@ -574,22 +568,24 @@ router.get('/diag', (req, res) => {
 
     let agencies = [];
     try {
-        agencies = db.prepare('SELECT id, slug, name, whatsapp, contact, created_at FROM agencies ORDER BY id').all();
+        agencies = await db.prepare('SELECT id, slug, name, whatsapp, contact, created_at FROM agencies ORDER BY id').all();
     } catch (e) { agencies = [{ error: e.message }]; }
 
     let leads = [];
     let leadCount = null;
     let propertyCount = null;
     try {
-        leadCount = db.prepare('SELECT COUNT(*) c FROM leads').get().c;
-        propertyCount = db.prepare('SELECT COUNT(*) c FROM properties').get().c;
-        leads = db.prepare('SELECT id, name, phone, budget, hot_score, lead_stage, date, agency_id FROM leads ORDER BY id DESC LIMIT 20').all();
+        leadCount = (await db.prepare('SELECT COUNT(*) c FROM leads').get()).c;
+        propertyCount = (await db.prepare('SELECT COUNT(*) c FROM properties').get()).c;
+        leads = await db.prepare('SELECT id, name, phone, budget, hot_score, lead_stage, date, agency_id FROM leads ORDER BY id DESC LIMIT 20').all();
     } catch (e) { leads = [{ error: e.message }]; }
 
     const dbPath = db.dbPath || '';
+    const isRemote = dbPath.startsWith('libsql://');
+    const localPath = dbPath.startsWith('file:') ? dbPath.replace(/^file:/, '') : dbPath;
     let dbExists = false;
     let dbStat = null;
-    try { dbExists = fs.existsSync(dbPath); if (dbExists) dbStat = fs.statSync(dbPath); } catch { /* ignore */ }
+    try { dbExists = isRemote || fs.existsSync(localPath); if (!isRemote && dbExists) dbStat = fs.statSync(localPath); } catch { /* ignore */ }
 
     res.json({
         now: new Date().toISOString(),
@@ -604,13 +600,15 @@ router.get('/diag', (req, res) => {
             SMTP_FROM: envFlag('SMTP_FROM'),
             ADMIN_SECRET: envFlag('ADMIN_SECRET'),
             RENDER: envFlag('RENDER'),
-            NODE_ENV: envFlag('NODE_ENV')
+            NODE_ENV: envFlag('NODE_ENV'),
+            TURSO_URL: envFlag('TURSO_URL'),
+            TURSO_TOKEN: envFlag('TURSO_TOKEN')
         },
         db: {
             dbPath,
             dbExists,
-            dbSizeBytes: dbStat ? dbStat.size : null,
-            dbMtime: dbStat ? dbStat.mtime.toISOString() : null,
+            dbSizeBytes: isRemote ? null : (dbStat ? dbStat.size : null),
+            dbMtime: isRemote ? null : (dbStat ? dbStat.mtime.toISOString() : null),
             propertyCount,
             leadCount
         },

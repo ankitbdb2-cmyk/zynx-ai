@@ -87,17 +87,17 @@ RULES:
 {"fear":"","what_not_to_do":"","counter_move":""}`;
 }
 
-function updateLastReply(db, leadId) {
+async function updateLastReply(db, leadId) {
   const now = Math.floor(Date.now() / 1000);
-  db.prepare('UPDATE leads SET last_reply_at = ? WHERE id = ?').run(now, leadId);
+  await db.prepare('UPDATE leads SET last_reply_at = ? WHERE id = ?').run(now, leadId);
 }
 
-function dismissProfile(db, profileId) {
-  db.prepare('UPDATE silence_profiles SET dismissed = 1 WHERE id = ?').run(profileId);
+async function dismissProfile(db, profileId) {
+  await db.prepare('UPDATE silence_profiles SET dismissed = 1 WHERE id = ?').run(profileId);
   return { dismissed: true, profileId };
 }
 
-function getSilenceProfiles(db) {
+async function getSilenceProfiles(db) {
   return db.prepare(`
     SELECT sp.*, l.name, l.phone, l.hot_score, l.nationality,
            l.budget, l.lead_stage, l.status
@@ -110,7 +110,7 @@ function getSilenceProfiles(db) {
 
 async function generateSilenceProfile(db, lead, silenceReason) {
   const recentCutoff = Math.floor(Date.now() / 1000) - PROFILE_COOLDOWN_SECONDS;
-  const existing = db.prepare(`
+  const existing = await db.prepare(`
     SELECT id FROM silence_profiles
     WHERE lead_id = ? AND generated_at > ? AND dismissed = 0
   `).get(lead.id, recentCutoff);
@@ -143,7 +143,7 @@ async function generateSilenceProfile(db, lead, silenceReason) {
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const result = db.prepare(`
+  const result = await db.prepare(`
     INSERT INTO silence_profiles
       (lead_id, generated_at, fear, what_not_to_do, counter_move,
        stage, nationality, budget)
@@ -156,7 +156,7 @@ async function generateSilenceProfile(db, lead, silenceReason) {
     lead.budget || 0
   );
 
-  db.prepare(`
+  await db.prepare(`
     UPDATE leads SET silence_detected_at = ?, silence_alerted_at = ?
     WHERE id = ?
   `).run(now, now, lead.id);
@@ -167,7 +167,7 @@ async function generateSilenceProfile(db, lead, silenceReason) {
 async function checkSilentLeads(db) {
   const now = Math.floor(Date.now() / 1000);
 
-  const hotLeads = db.prepare(`
+  const hotLeads = await db.prepare(`
     SELECT * FROM leads
     WHERE  hot_score >= 7
       AND  last_reply_at IS NOT NULL
@@ -182,7 +182,7 @@ async function checkSilentLeads(db) {
     MAX_PER_RUN
   );
 
-  const postViewingLeads = db.prepare(`
+  const postViewingLeads = await db.prepare(`
     SELECT * FROM leads
     WHERE  completed_at IS NOT NULL
       AND  last_reply_at IS NOT NULL

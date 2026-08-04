@@ -6,11 +6,6 @@ const fs      = require('fs');
 const { db } = require('./database');
 const { getDefaultAgency } = require('./services/agencies');
 
-if (!db.isReady()) {
-    console.error('FATAL: Database failed to initialize. Refusing to start.');
-    process.exit(1);
-}
-
 const app = express();
 const PORT = process.env.PORT || 8080;
 
@@ -26,11 +21,17 @@ app.use(express.json({ limit: '2mb' }));
 // ─── Liveness probe for uptime pingers (UptimeRobot / cron-job.org) ─────────
 // Registered BEFORE dbGuard so it always answers 200 during startup/restarts.
 // Deliberately cheap: two COUNTs + one stat. Keeps Render free instances awake.
-app.get('/health', (req, res) => {
-    const p = db.getPersistenceInfo();
-    const liveProperties = db.prepare(`SELECT COUNT(*) as c FROM properties`).get().c;
-    const liveLeads = db.prepare(`SELECT COUNT(*) as c FROM leads`).get().c;
-    const dbExists = fs.existsSync(p.dbPath);
+app.get('/health', async (req, res) => {
+    const p = await db.getPersistenceInfo();
+    const liveProperties = (await db.prepare(`SELECT COUNT(*) as c FROM properties`).get()).c;
+    const liveLeads = (await db.prepare(`SELECT COUNT(*) as c FROM leads`).get()).c;
+    const isRemote = p.dbPath.startsWith('libsql://');
+    const localPath = p.dbPath.startsWith('file:') ? p.dbPath.replace(/^file:/, '') : p.dbPath;
+    const dbExists = isRemote ? p.dbExists : fs.existsSync(localPath);
+    let dbSizeBytes = 0;
+    if (!isRemote && dbExists) {
+        try { dbSizeBytes = fs.statSync(localPath).size; } catch (e) { /* ignore */ }
+    }
     res.status(200).json({
         status: 'ok',
         uptime: process.uptime(),
@@ -40,7 +41,7 @@ app.get('/health', (req, res) => {
             environment: p.environment,
             dbPath: p.dbPath,
             dbExists,
-            dbSizeBytes: dbExists ? fs.statSync(p.dbPath).size : 0,
+            dbSizeBytes,
             propertyCount: liveProperties,
             leadCount: liveLeads,
             seeded: p.seeded,
@@ -58,9 +59,9 @@ function dbGuard(req, res, next) {
 
 app.use(dbGuard);
 
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
     try {
-        const agency = getDefaultAgency(db);
+        const agency = await getDefaultAgency(db);
         const agencyName = agency ? agency.name : (process.env.AGENCY_NAME || 'PropMind Real Estate');
         const agencySlug = agency ? agency.slug : (process.env.AGENCY_SLUG || '');
         let html = fs.readFileSync(path.join(__dirname, 'public', 'index.html'), 'utf8');
@@ -102,10 +103,17 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/whatsapp', whatsappRoutes);
 
 // ─── Start daily morning summary scheduler ─────────────────────────────────
-scheduleMorningSummary();
-
-app.listen(PORT, () => {
-    const p = db.getPersistenceInfo();
-    console.log(`Server running on http://localhost:${PORT}`);
-    console.log(`Database: ${p.dbPath} (${p.propertyCount} properties, ${p.leadCount} leads)`);
-});
+db.ready
+    .then(async () => {
+        scheduleMorningSummary();
+        app.listen(PORT, () => {
+            db.getPersistenceInfo().then((p) => {
+                console.log(`Server running on http://localhost:${PORT}`);
+                console.log(`Database: ${p.dbPath} (${p.propertyCount} properties, ${p.leadCount} leads)`);
+            });
+        });
+    })
+    .catch((err) => {
+        console.error('FATAL: Database failed to initialize.', err);
+        process.exit(1);
+    });

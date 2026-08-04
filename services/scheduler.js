@@ -12,13 +12,13 @@ function formatCurrency(val) {
     return isNaN(n) ? val || '—' : 'AED ' + n.toLocaleString();
 }
 
-function generateMorningSummary() {
+async function generateMorningSummary() {
     try {
         const yesterday = new Date();
         yesterday.setDate(yesterday.getDate() - 1);
         const dateStr = yesterday.toISOString().slice(0, 10);
 
-        const leads = db.prepare(`
+        const leads = await db.prepare(`
             SELECT * FROM leads WHERE date(date) = ? ORDER BY hot_score DESC
         `).all(dateStr);
 
@@ -65,7 +65,7 @@ function generateMorningSummary() {
 }
 
 async function sendMorningSummary() {
-    const summary = generateMorningSummary();
+    const summary = await generateMorningSummary();
     if (!summary) return;
 
     logger.logEvent('scheduler', { action: 'summary_sending', length: summary.length });
@@ -100,9 +100,10 @@ function scheduleMorningSummary() {
 }
 
 // ─── PVIL — check and fire post-viewing steps every 30 minutes ──────────────
-setInterval(() => {
+setInterval(async () => {
+    // PVIL steps
     try {
-        const result = checkAndFireSteps(db);
+        const result = await checkAndFireSteps(db);
         if (result.fired > 0) {
             console.log(`[PVIL] Steps fired: ${result.fired} of ${result.processed} leads checked`);
         }
@@ -112,7 +113,7 @@ setInterval(() => {
 
     // LAUNCH MODE: auto-expire stale launches
     try {
-        const expireResult = checkAndExpireLaunches(db);
+        const expireResult = await checkAndExpireLaunches(db);
         if (expireResult.expired > 0) {
             console.log(`[Launch Mode] ${expireResult.expired} launch(es) auto-expired`);
         }
@@ -122,9 +123,9 @@ setInterval(() => {
 
     // LAUNCH MODE: 30-minute live summary refresh when launch is active
     try {
-        const activeLaunch = getLaunchMode(db);
+        const activeLaunch = await getLaunchMode(db);
         if (activeLaunch) {
-            sendMorningSummary();
+            await sendMorningSummary();
         }
     } catch (launchRefreshErr) {
         console.error('[Launch Mode refresh error]', launchRefreshErr);
