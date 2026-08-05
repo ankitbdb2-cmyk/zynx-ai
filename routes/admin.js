@@ -303,14 +303,39 @@ router.post('/agencies/:id/properties', async (req, res) => {
     }
 });
 
-// Property Management
-router.get('/properties', async (req, res) => {
+// Delete an agency + its own properties and leads. The default agency (lowest
+// id) can never be deleted, so the system always has a tenant to fall back to.
+router.delete('/agencies/:id', async (req, res) => {
     try {
-        const rows = await db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
+        const id = req.params.id;
+        const agency = await db.prepare('SELECT id FROM agencies WHERE id = ?').get(id);
+        if (!agency) return res.status(404).json({ error: 'agency not found' });
+        const def = await getDefaultAgency(db);
+        if (def && def.id === agency.id) {
+            return res.status(400).json({ error: 'Cannot delete the default agency' });
+        }
+        await db.prepare('DELETE FROM properties WHERE agency_id = ?').run(id);
+        await db.prepare('DELETE FROM leads WHERE agency_id = ?').run(id);
+        await db.prepare('DELETE FROM agencies WHERE id = ?').run(id);
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Failed to delete agency:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+// Property Management — optional ?agency_id=<n> or ?agency=<slug> scopes the
+// result to one agency. No scope → all agencies (global admin dashboard).
+router.get('/properties', async (req, res) => {
+    const { agency_id, agency } = req.query;
+    try {
+        const rows = (agency_id !== undefined && agency_id !== '' || agency)
+            ? await db.prepare(`SELECT * FROM properties WHERE agency_id = ? ORDER BY date DESC`).all(await resolveAdminAgencyId(db, { agency_id, agency }))
+            : await db.prepare(`SELECT * FROM properties ORDER BY date DESC`).all();
         res.json({ properties: rows });
     } catch (err) {
         console.error('Failed to get properties:', err);
-        res.status(500).json({ error: 'Database error' });
+        res.status(err.status || 500).json({ error: err.publicMessage || 'Database error' });
     }
 });
 

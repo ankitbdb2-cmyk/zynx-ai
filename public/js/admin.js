@@ -339,11 +339,12 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     tbodyProperties.querySelectorAll('.btn-delete-prop').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const id = e.target.getAttribute('data-id');
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
         if (!confirm('Are you sure you want to delete this listing?')) return;
         try {
-          const res = await fetch(`/api/admin/properties/${id}`, { method: 'DELETE' });
+          const agencyId = await getAgencyScopeId();
+          const res = await fetch(`/api/admin/properties/${id}?agency_id=` + encodeURIComponent(agencyId), { method: 'DELETE' });
           if (res.ok) {
             loadDashboard();
           } else {

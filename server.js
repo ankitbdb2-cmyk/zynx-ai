@@ -9,6 +9,10 @@ const { getDefaultAgency } = require('./services/agencies');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
+// Behind a reverse proxy (Render, Railway, Fly, nginx) use the real client IP
+// from X-Forwarded-For so rate limits are enforced per visitor, not per proxy.
+app.set('trust proxy', true);
+
 // ─── CORS ───────────────────────────────────────────────────────────────────
 // The widget UI runs inside an iframe on THIS origin, so the chat itself is
 // same-origin. CORS is enabled anyway so external sites can call the public
@@ -96,6 +100,21 @@ const closerRoutes = require('./routes/closer');
 const adminRoutes = require('./routes/admin');
 const whatsappRoutes = require('./routes/whatsapp');
 const { scheduleMorningSummary } = require('./services/scheduler');
+const { createRateLimiter } = require('./services/rate-limit');
+
+// Public, cost-bearing endpoints get rate limited per IP. /api/ghost/chat and
+// /api/closer/* call Claude, so a tighter cap protects the budget; lead
+// endpoints write rows, so a higher cap still stops floods.
+const llmLimiter = createRateLimiter({ max: 30, windowMs: 60000 });
+const writeLimiter = createRateLimiter({ max: 60, windowMs: 60000 });
+
+app.use('/api/ghost/chat', llmLimiter);
+app.use('/api/closer', llmLimiter);
+app.use('/api/ghost/save-lead', writeLimiter);
+app.use('/api/ghost/viewing-offer', writeLimiter);
+app.use('/api/ghost/confirm-viewing', writeLimiter);
+app.use('/api/ghost/complete-viewing', writeLimiter);
+app.use('/api/whatsapp/end-conversation', writeLimiter);
 
 app.use('/api/ghost', ghostRoutes);
 app.use('/api/closer', closerRoutes);

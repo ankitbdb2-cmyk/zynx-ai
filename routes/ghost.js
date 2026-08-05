@@ -59,9 +59,25 @@ router.get('/stats', async (req, res) => {
 
 router.post('/chat', async (req, res) => {
     try {
+        const { messages } = req.body;
+
+        // Input validation — reject junk before it costs an LLM call.
+        if (!Array.isArray(messages) || messages.length === 0) {
+            return res.status(400).json({ error: 'messages must be a non-empty array' });
+        }
+        if (messages.length > 40) {
+            return res.status(400).json({ error: 'too many messages (max 40)' });
+        }
+        for (const m of messages) {
+            if (!m || (m.role !== 'user' && m.role !== 'assistant')
+                || typeof m.content !== 'string'
+                || m.content.trim().length === 0
+                || m.content.length > 4000) {
+                return res.status(400).json({ error: 'each message needs a valid role and content (max 4000 chars)' });
+            }
+        }
+
         const { agency, agencyId, agencyName } = await resolveAgency(db, req.query.agency);
-        const { messages } = req.body; 
-        
         // Fetch properties for THIS agency
         const properties = await db.prepare(`
             SELECT * FROM properties
@@ -247,22 +263,39 @@ router.post('/save-lead', async (req, res) => {
     const updateId = req.query.update;
     const { agency, agencyId } = await resolveAgency(db, req.query.agency || req.body.agency);
 
+    // Input validation — reject malformed or empty payloads early.
+    if (!name && !phone) {
+        return res.status(400).json({ error: 'name or phone required' });
+    }
+    if (phone !== undefined && phone !== null && !/^[\d\s+\-()]{7,20}$/.test(String(phone).trim())) {
+        return res.status(400).json({ error: 'invalid phone number' });
+    }
+    if (name !== undefined && name !== null && String(name).length > 200) {
+        return res.status(400).json({ error: 'name too long' });
+    }
+    if (budget !== undefined && budget !== null && String(budget).length > 200) {
+        return res.status(400).json({ error: 'budget too long' });
+    }
+
     try {
         let leadId;
 
         if (updateId) {
-            // Update existing lead with richer data
-            await db.prepare(`
+            // Update existing lead with richer data — scoped to the resolved
+            // agency so a caller can never mutate another tenant's lead.
+            const info = await db.prepare(`
                 UPDATE leads SET 
                     name = ?, phone = ?, budget = ?, timeline = ?,
                     hot_score = ?, lead_stage = ?, signals = ?, recommended_action = ?,
-                    area = ?, bedrooms = ?, visit_time = ?, psychology_notes = ?,
-                    agency_id = COALESCE(agency_id, ?)
-                WHERE id = ?
+                    area = ?, bedrooms = ?, visit_time = ?, psychology_notes = ?
+                WHERE id = ? AND agency_id = ?
             `).run(name, phone, budget, timeline, hot_score || 0, lead_stage || 'Cold',
                    Array.isArray(signals) ? signals.join(', ') : (signals || ''),
                    recommended_action, area, bedrooms, visit_time, psychology_notes,
-                   agency_id || agencyId, updateId);
+                   updateId, agencyId);
+            if (info.changes === 0) {
+                return res.status(404).json({ error: 'Lead not found for this agency' });
+            }
             leadId = Number(updateId);
             console.log('Lead updated successfully:', leadId);
         } else {
@@ -323,7 +356,8 @@ router.post('/viewing-offer', async (req, res) => {
     if (!leadId) return res.status(400).json({ error: 'leadId required' });
 
     try {
-        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
+        const { agencyId } = await resolveAgency(db, req.query.agency || req.body.agency);
+        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ? AND agency_id = ?`).get(leadId, agencyId);
         if (!lead) return res.status(404).json({ error: 'Lead not found' });
         if ((lead.hot_score || 0) < 8) {
             return res.json({ skipped: true, reason: 'Score below threshold' });
@@ -389,6 +423,7 @@ router.post('/confirm-viewing', async (req, res) => {
     if (!leadId || !choice) return res.status(400).json({ error: 'leadId and choice required' });
 
     try {
+        const { agencyId } = await resolveAgency(db, req.query.agency || req.body.agency);
         const offer = offerId
             ? await db.prepare(`SELECT * FROM viewing_offers WHERE id = ? AND lead_id = ?`).get(offerId, leadId)
             : await db.prepare(`SELECT * FROM viewing_offers WHERE lead_id = ? AND status = 'pending' ORDER BY id DESC LIMIT 1`).get(leadId);
@@ -407,15 +442,16 @@ router.post('/confirm-viewing', async (req, res) => {
         const slot = await db.prepare(`SELECT * FROM availability_slots WHERE id = ? AND is_booked = 0`).get(slotId);
         if (!slot) return res.status(400).json({ error: 'Slot no longer available' });
 
-        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ?`).get(leadId);
+        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ? AND agency_id = ?`).get(leadId, agencyId);
+        if (!lead) return res.status(404).json({ error: 'Lead not found' });
         const slotLabel = formatSlot(slot.slot_datetime, slot.label);
 
         await db.prepare(`UPDATE availability_slots SET is_booked = 1, lead_id = ? WHERE id = ?`).run(leadId, slotId);
         await db.prepare(`UPDATE viewing_offers SET status = 'confirmed', selected_slot_id = ? WHERE id = ?`).run(slotId, offer.id);
         await db.prepare(`
             UPDATE leads SET viewing_confirmed = 1, viewing_slot_id = ?, status = 'Visit Scheduled'
-            WHERE id = ?
-        `).run(slotId, leadId);
+            WHERE id = ? AND agency_id = ?
+        `).run(slotId, leadId, agencyId);
 
         const leadConfirm = `✅ Perfect! Your viewing is confirmed for **${slotLabel}**. I'll meet you there — see you soon! 🎉`;
         const agentConfirm = `Viewing booked: ${lead.name} (${lead.phone}) — ${slotLabel}`;
@@ -443,14 +479,15 @@ router.post('/complete-viewing', async (req, res) => {
     }
 
     try {
-        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ?`).get(lead_id);
+        const { agencyId } = await resolveAgency(db, req.query.agency || req.body.agency);
+        const lead = await db.prepare(`SELECT * FROM leads WHERE id = ? AND agency_id = ?`).get(lead_id, agencyId);
 
         if (!lead) {
             return res.status(404).json({ error: 'Lead not found' });
         }
 
         if (no_show) {
-            await db.prepare(`UPDATE leads SET no_show = 1, status = 'No Show' WHERE id = ?`).run(lead_id);
+            await db.prepare(`UPDATE leads SET no_show = 1, status = 'No Show' WHERE id = ? AND agency_id = ?`).run(lead_id, agencyId);
 
             if (process.env.AGENT_EMAIL && process.env.EMAIL_PASSWORD) {
                 const transporter = nodemailer.createTransport({
@@ -485,7 +522,7 @@ PVIL sequence was NOT launched for this lead.`
             return res.json({ success: true, pvil_launched: false, status: 'No Show' });
         }
 
-        await db.prepare(`UPDATE leads SET completed_at = datetime('now'), status = 'Viewing Completed' WHERE id = ?`).run(lead_id);
+        await db.prepare(`UPDATE leads SET completed_at = datetime('now'), status = 'Viewing Completed' WHERE id = ? AND agency_id = ?`).run(lead_id, agencyId);
 
         const { alreadyLaunched } = await launchPVIL(db, lead_id);
 
