@@ -225,10 +225,17 @@ document.addEventListener('DOMContentLoaded', () => {
         badgeHtml = ` <span class="badge amber" style="margin-left: 0.5rem; box-shadow: 0 0 10px rgba(245,158,11,0.25);">Warm</span>`;
       }
 
+      let notifyHtml = '';
+      if (lead.notify_status === 'failed') {
+        notifyHtml = ` <span class="badge red" style="margin-left:0.5rem; background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.4);" title="${esc('Alert delivery failed: ' + (lead.notify_error || 'unknown error'))}">⚠ Alert failed</span>`;
+      } else if (lead.notify_status === 'no_contact' || lead.notify_status === 'mock') {
+        notifyHtml = ` <span class="badge amber" style="margin-left:0.5rem;" title="${esc('Agency has no email/WhatsApp alert channel configured')}">⚠ No alert channel</span>`;
+      }
+
       tr.innerHTML = `
         <td class="lead-date">${dateStr}</td>
         <td class="lead-name">
-          ${esc(lead.name || 'Unknown')}${badgeHtml}
+          ${esc(lead.name || 'Unknown')}${badgeHtml}${notifyHtml}
         </td>
         <td class="lead-phone">${esc(lead.phone || '—')}</td>
         <td class="lead-budget">${esc(lead.budget || '—')}</td>

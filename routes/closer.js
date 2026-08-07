@@ -1,8 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
-const { db } = require('../database');
-const { getSilenceProfiles } = require('../services/silence-decoder');
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -96,13 +94,6 @@ Just return the script, nothing else. Make it sound natural but compelling.`;
         console.error('Error in closer emergency:', error.message);
         res.status(500).json({ error: 'Failed to generate emergency script' });
     }
-});
-
-// ── SILENCE DECODER — CO-PILOT FEED ────────────────────────────────────────
-
-router.get('/silence-feed', async (req, res) => {
-    const profiles = await getSilenceProfiles(db);
-    return res.json({ profiles });
 });
 
 // ── END SILENCE DECODER ─────────────────────────────────────────────────────

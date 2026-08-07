@@ -119,6 +119,26 @@ async function sendEmail(dest, subject, textBody, htmlBody) {
     }
 }
 
+// ─── Map a notify result to a durable per-lead status ───────────────────────
+// The lead record keeps notify_status/notify_error so a broken alert pipeline
+// is visible in the dashboard instead of failing silently.
+//   'sent'      → delivered (email or WhatsApp actually sent)
+//   'mock'      → no SMTP/WhatsApp credentials configured; only logged
+//   'no_contact'→ the agency row has no email/WhatsApp destination
+//   'skipped'   → deliberately not alerted (e.g. low-scoring WhatsApp lead)
+//   'failed'    → transport error (bad password, SMTP down, etc.)
+function leadNotifyStatus(result, fallback) {
+    if (!result) return { status: 'failed', error: fallback || 'notification returned no result' };
+    if (result.reason === 'no_contact_configured') {
+        return { status: 'no_contact', error: 'agency has no email/WhatsApp contact configured' };
+    }
+    if (result.mode === 'mock' || result.mode === 'stub' || (result.logged && !result.success)) {
+        return { status: 'mock', error: 'no SMTP credentials configured (email not actually sent)' };
+    }
+    if (result.success) return { status: 'sent', error: null };
+    return { status: 'failed', error: result.error || fallback || 'send failed' };
+}
+
 // ─── Main entry: push a captured lead to its agency ─────────────────────────
 async function notifyLeadCaptured(agency, lead) {
     const dest = resolveDestination(agency);
@@ -143,4 +163,4 @@ async function notifyLeadCaptured(agency, lead) {
     return result;
 }
 
-module.exports = { notifyLeadCaptured, resolveDestination, looksLikeEmail, buildLeadMessage };
+module.exports = { notifyLeadCaptured, resolveDestination, looksLikeEmail, buildLeadMessage, leadNotifyStatus };

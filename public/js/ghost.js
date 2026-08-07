@@ -142,6 +142,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       const data = await res.json();
 
+      // Non-2xx / error payloads throw so the catch below surfaces one friendly
+      // message instead of silently showing nothing (backend down, rate limit,
+      // validation, 5xx…).
+      if (!res.ok || data.error) {
+        throw Object.assign(new Error(data.error || ('Chat failed (HTTP ' + res.status + ')')), { status: res.status });
+      }
+
       const delay = Math.floor(Math.random() * 4000) + 2000;
 
       setTimeout(() => {
@@ -161,7 +168,10 @@ document.addEventListener('DOMContentLoaded', () => {
       typing.classList.remove('active');
       input.disabled = false;
       console.error('Chat error:', err);
-      appendMessage("Sorry, I'm having a quick connection issue. Please try again in a moment!", 'bot');
+      const friendly = err && err.status === 429
+        ? "You're messaging a bit too fast — give me a couple of seconds and try again!"
+        : "Sorry, I'm having a quick connection issue. Please try again in a moment!";
+      appendMessage(friendly, 'bot');
       playNotification();
     }
   });
