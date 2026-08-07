@@ -3,8 +3,14 @@ const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
 const fs      = require('fs');
+const dns     = require('dns');
 const { db } = require('./database');
 const { getDefaultAgency } = require('./services/agencies');
+
+// Prefer IPv4 for all outbound connections. Hosts like Render free tier have no
+// IPv6 route, so nodemailer's Gmail SMTP call (and any other client) must not
+// try the AAAA record first or it dies with ENETUNREACH before auth.
+dns.setDefaultResultOrder('ipv4first');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
