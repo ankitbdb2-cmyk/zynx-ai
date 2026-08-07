@@ -93,7 +93,71 @@ async function getTransporter() {
     return null;
 }
 
+// ─── HTTP email relays (preferred) ─────────────────────────────────────────
+// Direct Gmail SMTP is silently dropped from many cloud hosts (Render free,
+// VPS IPs). HTTP APIs deliver over port 443, which is universally reachable.
+//
+// Supported:
+//   - RESEND_API_KEY     → Resend (resend.com). NOTE: requires a verified
+//                          sender DOMAIN you own; from = RESEND_FROM.
+//   - SENDGRID_API_KEY   → Twilio SendGrid free tier. Use "Single Sender
+//                          Verification" so from = your own email, no domain
+//                          needed. from = SENDGRID_FROM (or AGENT_EMAIL).
+async function sendViaHttpRelay(dest, subject, textBody, htmlBody) {
+    if (process.env.RESEND_API_KEY) {
+        const from = process.env.RESEND_FROM;
+        if (!from) return { success: false, mode: 'email', to: dest, error: 'RESEND_FROM is required with RESEND_API_KEY' };
+        try {
+            const resp = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ from, to: [dest], subject, text: textBody, html: htmlBody || undefined })
+            });
+            const data = await resp.json().catch(() => ({}));
+            if (resp.ok) return { success: true, mode: 'email', to: dest, messageId: data.id };
+            return { success: false, mode: 'email', to: dest, error: (data.message && data.message[0] && data.message[0].message) || data.message || `HTTP ${resp.status}` };
+        } catch (err) {
+            return { success: false, mode: 'email', to: dest, error: err.message };
+        }
+    }
+    if (process.env.SENDGRID_API_KEY) {
+        const from = process.env.SENDGRID_FROM || process.env.AGENT_EMAIL;
+        if (!from) return { success: false, mode: 'email', to: dest, error: 'SENDGRID_FROM/AGENT_EMAIL required' };
+        try {
+            const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${process.env.SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    personalizations: [{ to: [{ email: dest }] }],
+                    from: { email: from },
+                    subject,
+                    content: [{ type: 'text/plain', value: textBody }].concat(htmlBody ? [{ type: 'text/html', value: htmlBody }] : [])
+                })
+            });
+            if (resp.status === 202) return { success: true, mode: 'email', to: dest, messageId: 'sendgrid-accepted' };
+            const data = await resp.json().catch(() => ({}));
+            return { success: false, mode: 'email', to: dest, error: (data.errors && data.errors[0] && data.errors[0].message) || `HTTP ${resp.status}` };
+        } catch (err) {
+            return { success: false, mode: 'email', to: dest, error: err.message };
+        }
+    }
+    return null;
+}
+
 async function sendEmail(dest, subject, textBody, htmlBody) {
+    // HTTP relay first — survives cloud hosts that drop SMTP egress.
+    const relayResult = await sendViaHttpRelay(dest, subject, textBody, htmlBody);
+    if (relayResult) {
+        if (relayResult.success) {
+            console.log(`[EMAIL SENT via relay → ${dest}] messageId=${relayResult.messageId}`);
+            logger.logEvent('notify', { action: 'email_sent', to: dest, subject, messageId: relayResult.messageId });
+        } else {
+            console.error(`[EMAIL RELAY FAILED → ${dest}] ${relayResult.error}`);
+            logger.logEvent('notify', { action: 'email_error', to: dest, error: relayResult.error });
+        }
+        return relayResult;
+    }
+
     const cfg = await getTransporter();
     if (!cfg) {
         console.log(`[MOCK EMAIL → ${dest}] Subject: ${subject}\n${textBody}`);
