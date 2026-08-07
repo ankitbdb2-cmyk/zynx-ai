@@ -103,6 +103,13 @@ async function getTransporter() {
 //   - SENDGRID_API_KEY   → Twilio SendGrid free tier. Use "Single Sender
 //                          Verification" so from = your own email, no domain
 //                          needed. from = SENDGRID_FROM (or AGENT_EMAIL).
+//   - BREVO_API_KEY      → Brevo (brevo.com, ex-Sendinblue). Free forever,
+//                          NO credit card and NO domain needed: verify a single
+//                          sender via a 6-digit code sent to your email.
+//                          from = BREVO_FROM (or AGENT_EMAIL). NOTE: since
+//                          Gmail/Yahoo's 2024 sender rules, Brevo rewrites the
+//                          From of free-email senders to a Brevo-owned address
+//                          (still delivered; may land in spam/promotions).
 async function sendViaHttpRelay(dest, subject, textBody, htmlBody) {
     if (process.env.RESEND_API_KEY) {
         const from = process.env.RESEND_FROM;
@@ -137,6 +144,29 @@ async function sendViaHttpRelay(dest, subject, textBody, htmlBody) {
             if (resp.status === 202) return { success: true, mode: 'email', to: dest, messageId: 'sendgrid-accepted' };
             const data = await resp.json().catch(() => ({}));
             return { success: false, mode: 'email', to: dest, error: (data.errors && data.errors[0] && data.errors[0].message) || `HTTP ${resp.status}` };
+        } catch (err) {
+            return { success: false, mode: 'email', to: dest, error: err.message };
+        }
+    }
+    if (process.env.BREVO_API_KEY) {
+        const from = process.env.BREVO_FROM || process.env.AGENT_EMAIL;
+        if (!from) return { success: false, mode: 'email', to: dest, error: 'BREVO_FROM/AGENT_EMAIL required' };
+        try {
+            const resp = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: { 'api-key': process.env.BREVO_API_KEY, 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sender: { email: from },
+                    to: [{ email: dest }],
+                    subject,
+                    textContent: textBody,
+                    ...(htmlBody ? { htmlContent: htmlBody } : {})
+                })
+            });
+            if (resp.status === 201) return { success: true, mode: 'email', to: dest, messageId: 'brevo-accepted' };
+            const data = await resp.json().catch(() => ({}));
+            const msg = data.message;
+            return { success: false, mode: 'email', to: dest, error: (Array.isArray(msg) ? msg[0] && msg[0].message : msg) || `HTTP ${resp.status}` };
         } catch (err) {
             return { success: false, mode: 'email', to: dest, error: err.message };
         }
@@ -230,4 +260,4 @@ async function notifyLeadCaptured(agency, lead) {
     return result;
 }
 
-module.exports = { notifyLeadCaptured, resolveDestination, looksLikeEmail, buildLeadMessage, leadNotifyStatus, sendEmail };
+module.exports = { notifyLeadCaptured, resolveDestination, looksLikeEmail, buildLeadMessage, leadNotifyStatus, sendEmail, sendViaHttpRelay };
