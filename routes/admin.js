@@ -83,11 +83,14 @@ router.post('/login', (req, res) => {
 
 router.get('/leads', async (req, res) => {
     try {
-        const rows = await db.prepare(`SELECT * FROM leads ORDER BY hot_score DESC, date DESC`).all();
+        const { agency_id, agency } = req.query;
+        const rows = (agency_id !== undefined && agency_id !== '' || agency)
+            ? await db.prepare(`SELECT * FROM leads WHERE agency_id = ? ORDER BY hot_score DESC, date DESC`).all(await resolveAdminAgencyId(db, { agency_id, agency }))
+            : await db.prepare(`SELECT * FROM leads ORDER BY hot_score DESC, date DESC`).all();
         res.json({ leads: rows });
     } catch (err) {
         console.error('Failed to get leads:', err);
-        res.status(500).json({ error: 'Database error' });
+        res.status(err.status || 500).json({ error: err.publicMessage || 'Database error' });
     }
 });
 

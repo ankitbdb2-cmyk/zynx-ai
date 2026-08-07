@@ -6,6 +6,7 @@ const { transcribeVoiceNote } = require('../services/transcriber');
 const { detectLanguage, translateToEnglish } = require('../services/language');
 const { assessLead } = require('../services/scorer');
 const { sendReply, sendHotAlert } = require('../services/whatsapp');
+const { notifyLeadCaptured, leadNotifyStatus } = require('../services/notifications');
 const logger = require('../services/logger');
 const { cancelPVIL } = require('../services/post-viewing');
 const { getDefaultAgency } = require('../services/agencies');
@@ -155,8 +156,9 @@ async function finalizeAndScore(from, session) {
         psychology_notes: `Language: ${lang.name} (${lang.code}). Transcription cost: $${session.transcriptionCost.toFixed(4)}`
     };
 
+    let savedLeadId = null;
     try {
-        await db.prepare(`
+        const ins = await db.prepare(`
             INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, signals, recommended_action, area, bedrooms, visit_time, psychology_notes, agency_id)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).run(
@@ -167,6 +169,7 @@ async function finalizeAndScore(from, session) {
             leadPayload.area, leadPayload.bedrooms, '', leadPayload.psychology_notes,
             (await getDefaultAgency(db) || {}).id
         );
+        savedLeadId = ins.lastInsertRowid;
         logger.logEvent('scorer', { action: 'lead_saved', from, name: leadPayload.name, score: scoring.hot_score });
 
         // NIM: write detected nationality to DB for PVIL Step 4 + NIM logging
@@ -204,12 +207,22 @@ async function finalizeAndScore(from, session) {
             || process.env.AGENT_WHATSAPP_NUMBER || '';
         let alertResult;
         if (alertDest && /@/.test(alertDest)) {
-            const { notifyLeadCaptured } = require('../services/notifications');
             alertResult = await notifyLeadCaptured(agency, { ...hotInfo, source: 'WhatsApp inbound' });
         } else {
             alertResult = await sendHotAlert(alertDest, hotInfo);
         }
         logger.logEvent('scorer', { action: 'hot_alert_sent', from, to: alertDest, result: alertResult });
+        // Persist the alert outcome on the lead row so failures are visible.
+        if (savedLeadId) {
+            const { status, error } = leadNotifyStatus(alertResult, 'hot alert failed');
+            await db.prepare(`UPDATE leads SET notify_status = ?, notify_error = ? WHERE id = ?`)
+                .run(status, error, savedLeadId);
+        }
+    } else if (savedLeadId) {
+        // Low-score WhatsApp lead: deliberately not alerted — say so on the row
+        // so the "silent" state is explicit rather than indistinguishable.
+        await db.prepare(`UPDATE leads SET notify_status = 'skipped', notify_error = 'below hot threshold' WHERE id = ?`)
+            .run(savedLeadId);
     }
 }
 

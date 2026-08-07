@@ -158,6 +158,8 @@ async function initDb() {
         { col: 'silence_detected_at', def: 'INTEGER' },
         { col: 'silence_alerted_at', def: 'INTEGER' },
         { col: 'last_reply_at', def: 'INTEGER' },
+        { col: 'notify_status', def: "TEXT DEFAULT 'pending'" },
+        { col: 'notify_error', def: 'TEXT' },
     ];
     for (const m of leadMigrations) {
         try { await db.prepare(`ALTER TABLE leads ADD COLUMN ${m.col} ${m.def}`).run(); } catch (e) { /* exists */ }

@@ -7,7 +7,7 @@ const { launchPVIL } = require('../services/post-viewing');
 const { getLaunchMode } = require('../services/launch-mode');
 const { buildSystemPrompt } = require('../services/system-prompt');
 const { resolveAgency } = require('../services/agencies');
-const { notifyLeadCaptured } = require('../services/notifications');
+const { notifyLeadCaptured, leadNotifyStatus } = require('../services/notifications');
 
 const anthropic = new Anthropic({
     apiKey: process.env.ANTHROPIC_API_KEY
@@ -202,12 +202,14 @@ router.post('/chat', async (req, res) => {
             if (phoneVal) {
                 const existing = await db.prepare('SELECT id FROM leads WHERE phone = ? AND agency_id = ?').get(phoneVal, agencyId);
                 let capturedLead;
+                let capturedLeadId = null;
                 if (!existing) {
                     const info = await db.prepare(`
                         INSERT INTO leads (name, phone, budget, timeline, hot_score, lead_stage, area, purpose, psychology_notes, agency_id)
                         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     `).run(nameVal, phoneVal, budgetVal, timelineVal, hotScore, leadStage, areaVal, purposeVal, psychNotes, agencyId);
                     console.log('LEAD SAVED:', info.lastInsertRowid, '| Score:', hotScore, '| Stage:', leadStage, '| Psych:', psychNotes);
+                    capturedLeadId = info.lastInsertRowid;
                     capturedLead = {
                         name: nameVal, phone: phoneVal, budget: budgetVal, area: areaVal,
                         timeline: timelineVal, hot_score: hotScore, lead_stage: leadStage,
@@ -226,6 +228,7 @@ router.post('/chat', async (req, res) => {
                         WHERE id = ?
                     `).run(nameVal, hotScore, leadStage, budgetVal, timelineVal, areaVal, purposeVal, psychNotes, existing.id);
                     console.log('LEAD UPDATED:', existing.id, '| Score:', hotScore, '| Psych:', psychNotes);
+                    capturedLeadId = existing.id;
                     capturedLead = {
                         name: nameVal, phone: phoneVal, budget: budgetVal, area: areaVal,
                         timeline: timelineVal, hot_score: hotScore, lead_stage: leadStage,
@@ -233,8 +236,21 @@ router.post('/chat', async (req, res) => {
                     };
                 }
                 // Push the captured lead to the agency's own WhatsApp / email.
-                notifyLeadCaptured(agency, capturedLead)
-                    .catch(e => console.error('[LEAD NOTIFY ERROR]', e.message));
+                // Fire-and-forget, but persist the outcome on the lead row so a
+                // broken alert pipeline shows up in the dashboard.
+                if (agency && capturedLeadId) {
+                    notifyLeadCaptured(agency, capturedLead)
+                        .then((result) => {
+                            const { status, error } = leadNotifyStatus(result);
+                            return db.prepare(`UPDATE leads SET notify_status = ?, notify_error = ? WHERE id = ? AND agency_id = ?`)
+                                .run(status, error, capturedLeadId, agencyId);
+                        })
+                        .catch((e) => {
+                            console.error('[LEAD NOTIFY ERROR]', e.message);
+                            return db.prepare(`UPDATE leads SET notify_status = 'failed', notify_error = ? WHERE id = ? AND agency_id = ?`)
+                                .run(String(e.message || 'unknown').slice(0, 500), capturedLeadId, agencyId);
+                        });
+                }
             } else {
                 // No phone yet — save anonymous partial lead keyed on session
                 const sessionKey = messages[0]?.content?.slice(0, 40) || 'anon';
@@ -312,12 +328,23 @@ router.post('/save-lead', async (req, res) => {
         }
 
         // Per-agency notification: WhatsApp to the agency contact (or email).
+        // Fire-and-forget (never slow the visitor's save), but persist the
+        // outcome on the lead row so a broken pipeline is visible in the
+        // dashboard instead of failing silently.
         notifyLeadCaptured(agency, {
             name, phone, budget, area, timeline, bedrooms,
             hot_score: hot_score || 0, lead_stage: lead_stage || 'Cold',
             signals: Array.isArray(signals) ? signals.join(', ') : signals,
             source: 'Website widget', timestamp: new Date().toISOString()
-        }).catch(e => console.error('[LEAD NOTIFY ERROR]', e.message));
+        }).then((result) => {
+            const { status, error } = leadNotifyStatus(result);
+            return db.prepare(`UPDATE leads SET notify_status = ?, notify_error = ? WHERE id = ? AND agency_id = ?`)
+                .run(status, error, leadId, agencyId);
+        }).catch((e) => {
+            console.error('[LEAD NOTIFY ERROR]', e.message);
+            return db.prepare(`UPDATE leads SET notify_status = 'failed', notify_error = ? WHERE id = ? AND agency_id = ?`)
+                .run(String(e.message || 'unknown').slice(0, 500), leadId, agencyId);
+        });
 
         res.json({ success: true, leadId: leadId });
     } catch (err) {
