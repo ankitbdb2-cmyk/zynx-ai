@@ -230,4 +230,4 @@ async function notifyLeadCaptured(agency, lead) {
     return result;
 }
 
-module.exports = { notifyLeadCaptured, resolveDestination, looksLikeEmail, buildLeadMessage, leadNotifyStatus };
+module.exports = { notifyLeadCaptured, resolveDestination, looksLikeEmail, buildLeadMessage, leadNotifyStatus, sendEmail };
